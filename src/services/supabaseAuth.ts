@@ -103,7 +103,6 @@ export class SupabaseAuthService {
   // 监听认证状态变化
   onAuthStateChange(callback: (user: UserProfile | null) => void) {
     return supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('认证状态变化:', event, session?.user?.id)
       
       if (event === 'INITIAL_SESSION' && session?.user) {
         // 页面加载时恢复持久化的认证会话
@@ -115,7 +114,6 @@ export class SupabaseAuthService {
             .single()
           callback(data)
         } catch (error) {
-          console.error('恢复认证会话失败:', error)
           callback(null)
         }
       } else if (event === 'SIGNED_IN' && session?.user) {
@@ -127,7 +125,6 @@ export class SupabaseAuthService {
             .single()
           callback(data)
         } catch (error) {
-          console.error('获取用户profile失败:', error)
           callback(null)
         }
       } else if (event === 'SIGNED_OUT') {
@@ -142,7 +139,7 @@ export class SupabaseAuthService {
             .single()
           callback(data)
         } catch (error) {
-          console.error('更新用户profile失败:', error)
+          // 更新失败，静默处理
         }
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         // 令牌刷新时更新用户信息
@@ -154,7 +151,7 @@ export class SupabaseAuthService {
             .single()
           callback(data)
         } catch (error) {
-          console.error('令牌刷新后获取用户信息失败:', error)
+          // 获取失败，静默处理
         }
       }
     })

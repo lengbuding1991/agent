@@ -22,14 +22,11 @@ export const useAuthStore = defineStore('auth', () => {
       if (error) {
         // 如果是认证会话缺失的错误，尝试从本地存储恢复
         if (error.message?.includes('Auth session missing')) {
-          console.log('Supabase认证会话缺失，尝试从本地存储恢复...')
           const storedUser = restoreAuthState()
           if (storedUser) {
-            console.log('从本地存储成功恢复认证状态')
             user.value = storedUser
             return
           }
-          console.log('未找到认证会话，用户未登录')
           user.value = null
           return
         }
@@ -42,12 +39,9 @@ export const useAuthStore = defineStore('auth', () => {
         saveAuthState(currentUser)
       }
     } catch (error) {
-      console.error('初始化认证失败:', error)
-      
       // 作为最后手段，尝试从本地存储恢复
       const storedUser = restoreAuthState()
       if (storedUser) {
-        console.log('认证失败后从本地存储恢复认证状态')
         user.value = storedUser
       } else {
         user.value = null
@@ -66,7 +60,6 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = newUser
       return { success: true }
     } catch (error) {
-      console.error('注册失败:', error)
       return { success: false, error }
     } finally {
       isLoading.value = false
@@ -82,7 +75,6 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = authUser
       return { success: true }
     } catch (error) {
-      console.error('登录失败:', error)
       return { success: false, error }
     } finally {
       isLoading.value = false
@@ -98,7 +90,6 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null
       return { success: true }
     } catch (error) {
-      console.error('登出失败:', error)
       return { success: false, error }
     } finally {
       isLoading.value = false
@@ -117,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem(AUTH_STORAGE_KEY)
       }
     } catch (error) {
-      console.error('保存认证状态到本地存储失败:', error)
+      // 保存失败，静默处理
     }
   }
 
@@ -138,7 +129,6 @@ export const useAuthStore = defineStore('auth', () => {
       
       return storedUser
     } catch (error) {
-      console.error('从本地存储恢复认证状态失败:', error)
       localStorage.removeItem(AUTH_STORAGE_KEY)
       return null
     }

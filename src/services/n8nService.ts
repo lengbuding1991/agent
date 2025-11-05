@@ -83,10 +83,6 @@ export class N8nService {
     }
 
     try {
-      console.log('🚀 [n8nService] 开始发送视频解析请求')
-      console.log('🌐 Webhook URL:', this.config!.webhookUrl)
-      console.log('💬 请求消息:', message)
-
       const response = await axios.post(this.config!.webhookUrl, requestData, {
         timeout: this.config!.timeout || 30000,
         headers: {
@@ -95,13 +91,8 @@ export class N8nService {
         }
       })
       
-      console.log('✅ [n8nService] 视频解析请求成功')
-      console.log('📥 响应数据:', response.data)
-      
       return response.data
     } catch (error: any) {
-      console.error('❌ [n8nService] 视频解析请求失败:', error)
-      
       if (error.code === 'ECONNABORTED') {
         throw new Error('请求超时，请检查网络连接或重试')
       }
@@ -133,11 +124,6 @@ export class N8nService {
     }
 
     try {
-      console.log('🚀 [n8nService] 开始发送流式视频解析请求')
-      console.log('🌐 Webhook URL:', this.config!.webhookUrl)
-      console.log('💬 请求消息:', message)
-      console.log('📦 请求数据:', JSON.stringify(requestData, null, 2))
-
       // 使用代理路径解决CORS问题
       // 将完整的n8n URL转换为代理路径
       const proxyUrl = this.config!.webhookUrl.replace('https://n8n.lbuding.com', '/api/n8n')
@@ -163,10 +149,6 @@ export class N8nService {
         throw new Error('无法读取响应流')
       }
 
-      console.log('📥 [n8nService] 开始读取流式响应')
-      console.log('📥 [n8nService] response.status:', response.status)
-      console.log('📥 [n8nService] response.headers:', Object.fromEntries(response.headers.entries()))
-
       let buffer = ''
       let hasReceivedData = false
       let chunkCount = 0
@@ -175,19 +157,15 @@ export class N8nService {
         const { done, value } = await reader.read()
         
         if (done) {
-          console.log('📥 [n8nService] 流读取完成，总共收到', chunkCount, '个数据块')
           break
         }
         
         chunkCount++
-        console.log('📥 [n8nService] 收到第', chunkCount, '个数据块，长度:', value.length)
         
         // 将Uint8Array转换为字符串
         const chunk = new TextDecoder().decode(value)
-        console.log('📥 [n8nService] 原始字符串数据:', chunk)
         
         // 直接发送原始数据给ChatPage显示，不做任何处理
-        console.log('📥 直接发送原始数据给ChatPage:', chunk)
         onChunk({
           type: 'text',
           data: chunk
@@ -197,14 +175,12 @@ export class N8nService {
 
       // 如果没有收到任何数据，发送空数据提示
       if (!hasReceivedData) {
-        console.log('⚠️ 未收到任何有效数据，发送提示信息')
         onChunk({
           type: 'text',
           data: '🎬 视频解析完成，但未返回有效数据',
           isFinal: true
         })
       } else {
-        console.log('✅ 已收到有效数据，发送最终块标记')
         // 发送最终块标记，不发送额外内容
         onChunk({
           type: 'text',
@@ -214,8 +190,6 @@ export class N8nService {
       }
 
     } catch (error: any) {
-      console.error('❌ [n8nService] 流式视频解析失败:', error)
-      
       onChunk({
         type: 'error',
         data: error.message
@@ -239,7 +213,6 @@ export class N8nService {
       
       return response.status === 200
     } catch (error) {
-      console.warn('n8n连接测试失败:', error)
       return false
     }
   }

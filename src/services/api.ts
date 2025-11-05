@@ -29,8 +29,6 @@ api.interceptors.response.use(
     return response.data
   },
   (error) => {
-    console.error('API Error:', error)
-    
     if (error.response?.status === 401) {
       // Token过期，跳转到登录页
       localStorage.removeItem('auth_token')
@@ -179,7 +177,7 @@ export class ChatStream {
           const data = JSON.parse(event.data)
           callback(data)
         } catch (error) {
-          console.error('Failed to parse stream message:', error)
+          // 解析失败，静默处理
         }
       })
     }

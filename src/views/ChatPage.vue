@@ -444,27 +444,16 @@ const sendMessage = async () => {
   isLoading.value = true
 
   try {
-    console.log('🔍 [ChatPage] 开始处理用户消息')
-    console.log('📋 当前配置类型:', configType.value)
-    
     // 根据配置类型处理消息
     if (configType.value === 'douyin') {
-      console.log('🌐 使用抖音知识库（阿里云大模型）')
-      console.log('📋 当前配置:', aliyunConfig.value)
-      
       // 配置已内嵌，直接使用
-      console.log('⚙️ 设置阿里云配置...')
       aliyunService.setConfig(aliyunConfig.value)
-      console.log('✅ 配置设置完成')
     } else if (configType.value === 'video') {
-      console.log('🎬 使用视频解析功能（n8n工作流）')
-      
       // 设置n8n工作流配置
       n8nService.setConfig({
         webhookUrl: 'https://n8n.lbuding.com/webhook/parserAll',
         timeout: 30000
       })
-      console.log('✅ n8n配置设置完成')
     }
     
     // 创建流式响应消息
@@ -487,18 +476,12 @@ const sendMessage = async () => {
     
     // 使用流式响应
     try {
-      console.log('🚀 开始调用API...')
-      console.log('💬 发送的消息:', messages)
-      
       // 根据配置类型调用不同的API
       if (configType.value === 'douyin') {
-        console.log('🤖 调用阿里云大模型API...');
-        
         await aliyunService.sendMessageStream(
           messages,
           // onMessage回调：处理每个数据块
           (chunk: string) => {
-            console.log('📥 收到数据块:', chunk)
             if (currentChat.value && assistantMessage) {
               // 使用Vue的响应式更新方式
               const index = currentChat.value.messages.findIndex(msg => msg.id === assistantMessage.id)
@@ -508,32 +491,17 @@ const sendMessage = async () => {
                 currentChat.value.messages = [...currentChat.value.messages]
                 // 实时更新显示
                 scrollToBottom()
-                console.log('✅ 消息已更新，当前内容:', currentChat.value.messages[index].content)
               }
             }
           }
         )
-        console.log('🎉 阿里云流式响应处理完成')
         
       } else if (configType.value === 'video') {
-        console.log('🎬 调用n8n工作流API...');
-        console.log('💬 发送给n8n的原始消息:', messageText);
-        console.log('🔍 当前配置类型:', configType.value);
-        console.log('🔍 当前聊天ID:', currentChat.value?.id);
-        console.log('🔍 助手消息ID:', assistantMessage?.id);
-        
         // 调用n8n工作流进行视频解析
         await n8nService.parseVideoStream(
           messageText,
           // onChunk回调：处理每个数据块
           (chunk) => {
-            console.log('📥 ========== ChatPage收到n8n数据块 ==========');
-            console.log('📥 完整数据块对象:', chunk);
-            console.log('📥 数据块类型:', chunk.type);
-            console.log('📥 数据块数据:', chunk.data);
-            console.log('📥 是否为最终块:', chunk.isFinal);
-            console.log('📥 =========================================');
-            
             if (currentChat.value && assistantMessage) {
               // 使用Vue的响应式更新方式
               const index = currentChat.value.messages.findIndex(msg => msg.id === assistantMessage.id)
@@ -544,7 +512,6 @@ const sendMessage = async () => {
                     try {
                       // 解析JSON数据并提取URL
                       const jsonData = JSON.parse(chunk.data as string)
-                      console.log('📥 解析后的JSON数据:', jsonData)
                       
                       // 提取URL：支持多种数据结构
                       let videoUrl = ''
@@ -564,14 +531,11 @@ const sendMessage = async () => {
                       }
                       
                       if (videoUrl) {
-                        console.log('📥 提取到的视频URL:', videoUrl)
                         currentChat.value.messages[index].content += `\n🎬 视频解析成功！\n🔗 下载链接：${videoUrl}`
                       } else {
-                        console.log('📥 未找到URL，显示原始数据')
                         currentChat.value.messages[index].content += chunk.data as string
                       }
                     } catch (error) {
-                      console.warn('📥 JSON解析失败，显示原始数据:', error)
                       currentChat.value.messages[index].content += chunk.data as string
                     }
                   }
@@ -587,7 +551,6 @@ const sendMessage = async () => {
                   currentChat.value.messages[index].content += `\n❌ 错误: ${chunk.data}`
                 } else {
                   // 默认处理：显示所有其他类型的数据
-                  console.log('🔍 收到未知类型的数据块:', chunk)
                   currentChat.value.messages[index].content += `\n📦 原始数据: ${JSON.stringify(chunk, null, 2)}`
                 }
                 
@@ -595,7 +558,6 @@ const sendMessage = async () => {
                 currentChat.value.messages = [...currentChat.value.messages]
                 // 实时更新显示
                 scrollToBottom()
-                console.log('✅ n8n消息已更新，当前内容:', currentChat.value.messages[index].content)
                 
                 // 如果是最终块，检查是否有内容，如果没有则显示提示
                 if (chunk.isFinal && !currentChat.value.messages[index].content.trim()) {
@@ -608,10 +570,8 @@ const sendMessage = async () => {
             }
           }
         )
-        console.log('🎉 n8n工作流响应处理完成')
       }
     } catch (error) {
-      console.error('❌ API调用失败:', error)
       throw error
     }
     
@@ -620,8 +580,6 @@ const sendMessage = async () => {
       currentChat.value.lastActive = new Date()
     }
   } catch (error) {
-      console.error('❌ API调用失败:', error)
-      
       // 添加错误消息到聊天
       if (currentChat.value) {
         let errorContent = `抱歉，发送消息时出现错误：${error instanceof Error ? error.message : '未知错误'}`
@@ -741,7 +699,6 @@ const login = async () => {
       notification.error(`登录失败: ${errorMessage}`)
     }
   } catch (error) {
-    console.error('登录过程中出错:', error)
     notification.error('登录失败，请稍后重试')
   } finally {
     loginLoading.value = false
@@ -786,7 +743,6 @@ const register = async () => {
       notification.error(`注册失败: ${errorMessage}`)
     }
   } catch (error) {
-    console.error('注册过程中出错:', error)
     notification.error('注册失败，请稍后重试')
   } finally {
     registerLoading.value = false
@@ -808,7 +764,6 @@ const logout = async () => {
       notification.error(`登出失败: ${errorMessage}`)
     }
   } catch (error) {
-    console.error('登出过程中出错:', error)
     notification.error('登出失败，请稍后重试')
   }
 }
@@ -842,7 +797,6 @@ const saveConfig = () => {
       configType: 'douyin',
       lastUpdated: new Date().toISOString()
     }))
-    console.log('抖音知识库配置已保存:', aliyunConfig.value)
     notification.success('已切换到抖音知识库模型！')
   } else if (configType.value === 'video') {
     // 保存视频解析配置（预留接口）
@@ -854,7 +808,6 @@ const saveConfig = () => {
       features: ['video-parsing', 'content-analysis']
     }
     localStorage.setItem('video-config', JSON.stringify(videoConfig))
-    console.log('视频解析配置已保存:', videoConfig)
     notification.success('已切换到视频解析模型！接口已预留，等待n8n工作流配置')
   }
   
@@ -899,9 +852,8 @@ onMounted(async () => {
         apiKey: aliyunConfig.value.apiKey, // 强制使用内嵌API Key
         appId: aliyunConfig.value.appId    // 强制使用内嵌应用ID
       }
-      console.log('阿里云配置已加载（内嵌配置优先）:', aliyunConfig.value)
     } catch (error) {
-      console.error('解析阿里云配置失败:', error)
+      // 配置加载失败，静默处理
     }
   }
   

@@ -147,20 +147,13 @@ export class AliyunService {
     messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, 
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    console.log('🔍 [aliyunService] sendMessageStream 开始执行')
-    console.log('📋 当前配置:', this.config)
-    
     this.validateConfig()
-    console.log('✅ 配置验证通过')
 
     // 获取最后一条用户消息
     const userMessage = messages.filter(msg => msg.role === 'user').pop()
     if (!userMessage) {
-      console.error('❌ 没有找到用户消息')
       throw new Error('没有找到用户消息')
     }
-    
-    console.log('💬 用户消息:', userMessage.content)
     
     // 构建请求数据，使用阿里云百炼平台自定义应用API格式，启用流式
     const requestData = {
@@ -173,12 +166,8 @@ export class AliyunService {
         stream: true
       }
     }
-    
-    console.log('📤 请求数据:', requestData)
-    console.log('🌐 API URL:', this.buildApiUrl())
 
     try {
-      console.log('🚀 开始发送HTTP请求...')
       const response = await fetch(this.buildApiUrl(), {
         method: 'POST',
         headers: {
@@ -188,27 +177,18 @@ export class AliyunService {
         },
         body: JSON.stringify(requestData)
       })
-      
-      console.log('📥 HTTP响应状态:', response.status, response.statusText)
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('❌ HTTP请求失败:', response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
-      
-      console.log('✅ HTTP请求成功，开始处理流式响应')
 
       const reader = response.body?.getReader()
       if (!reader) {
-        console.error('❌ 无法获取响应流读取器')
         throw new Error('无法读取响应流')
       }
-      
-      console.log('📖 获取到响应流读取器')
 
       const decoder = new TextDecoder()
-      console.log('🔤 文本解码器已初始化')
 
       try {
         let buffer = ''
@@ -218,7 +198,6 @@ export class AliyunService {
           const { done, value } = await reader.read()
           
           if (done) {
-            console.log('🔚 流式响应结束')
             if (!hasReceivedResult) {
               console.warn('⚠️ 未收到任何有效结果数据')
             }
@@ -294,10 +273,6 @@ export class AliyunService {
       }
     }
 
-    console.log('🔍 [aliyunService] 备用流式调用开始')
-    console.log('💬 用户消息:', userMessage.content)
-    console.log('🌐 API URL:', this.buildApiUrl())
-
     try {
       const response = await fetch(this.buildApiUrl(), {
         method: 'POST',
@@ -309,11 +284,8 @@ export class AliyunService {
         body: JSON.stringify(requestData)
       })
 
-      console.log('📥 响应状态:', response.status, response.statusText)
-
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('❌ HTTP错误:', response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
@@ -333,7 +305,7 @@ export class AliyunService {
           
           if (done) {
             if (!hasReceivedResult) {
-              console.warn('⚠️ 备用方法未收到任何有效结果数据')
+              throw new Error('未收到任何有效结果数据')
             }
             break
           }
@@ -346,8 +318,6 @@ export class AliyunService {
             const trimmedLine = line.trim()
             if (!trimmedLine) continue
             
-            console.log('📥 备用方法原始SSE行:', trimmedLine)
-            
             // 处理阿里云百炼平台自定义应用的SSE格式
             if (trimmedLine.startsWith('data: ')) {
               try {
@@ -358,33 +328,28 @@ export class AliyunService {
                 if (data.output && data.output.text) {
                   const content = data.output.text
                   if (content) {
-                    console.log('✅ 备用方法收到有效内容:', content)
-                    
                     // 阿里云百炼平台返回的是完整响应，不是分块数据
                     // 这里需要一次性传递完整内容
                     yield content
                     hasReceivedResult = true
                     
                     // 由于是完整响应，收到后可以直接结束流式处理
-                    console.log('✅ 备用方法完整响应已接收，流式处理完成')
                     return // 对于生成器函数，使用return来结束
                   }
                 }
               } catch (error) {
-                console.warn('解析流式响应数据失败:', error)
+                // 忽略解析错误，继续处理下一行
               }
             }
             
             // 处理阿里云百炼平台的特殊SSE格式（包含HTTP状态的行）
             if (trimmedLine.startsWith(':HTTP_STATUS/')) {
-              console.log('📋 备用方法阿里云HTTP状态行:', trimmedLine)
               // 这个行后面紧跟着data行，我们继续处理下一行
               continue
             }
             
             // 处理完成信号
             if (trimmedLine === 'data: [DONE]' || trimmedLine.includes('finish_reason')) {
-              console.log('✅ 备用流式响应完成')
               return
             }
           }
@@ -393,7 +358,6 @@ export class AliyunService {
         reader.releaseLock()
       }
     } catch (error: any) {
-      console.error('阿里云百炼平台流式调用失败:', error)
       throw new Error(`流式响应失败: ${error.message}`)
     }
   }
@@ -401,7 +365,6 @@ export class AliyunService {
   // 测试连接 - 使用与测试文件相同的逻辑
   async testConnection(): Promise<boolean> {
     try {
-      console.log('🔍 开始测试阿里云百炼平台连接...')
       
       const testMessages = [
         { role: 'user' as const, content: '你好' }
@@ -410,10 +373,8 @@ export class AliyunService {
       // 使用非流式调用进行测试
       const response = await this.sendChatMessage(testMessages)
       
-      console.log('✅ 连接测试成功:', response)
       return !!response.output && !!response.output.text
     } catch (error) {
-      console.error('❌ 连接测试失败:', error)
       return false
     }
   }
