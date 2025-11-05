@@ -3,7 +3,7 @@
     <!-- 侧边栏 -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h2>DeepSeek Chat</h2>
+        <h2>小柠檬</h2>
         <button class="new-chat-btn" @click="startNewChat">
           <span>+</span> 新对话
         </button>
@@ -325,6 +325,8 @@ const messageInput = ref<HTMLTextAreaElement>()
 const showApiKeyDialog = ref(false)
 const showUserMenu = ref(false)
 
+
+
 // 配置类型管理
 const configType = ref<'douyin' | 'video'>('douyin') // 默认选择抖音知识库
 
@@ -397,7 +399,8 @@ const currentChatTitle = computed(() =>
   currentChat.value?.title || '新对话'
 )
 
-// 方法
+
+
 const startNewChat = () => {
   const newChat: Chat = {
     id: Date.now().toString(),
@@ -458,7 +461,7 @@ const sendMessage = async () => {
       
       // 设置n8n工作流配置
       n8nService.setConfig({
-        webhookUrl: 'https://n8n.lbuding.com/webhook-test/parserAll',
+        webhookUrl: 'https://n8n.lbuding.com/webhook/parserAll',
         timeout: 30000
       })
       console.log('✅ n8n配置设置完成')
@@ -910,7 +913,7 @@ onMounted(() => {
 .chat-container {
   display: flex;
   height: 100vh;
-  background: #fff;
+  background: linear-gradient(135deg, #f9ffc8 0%, #ffffff 100%);
 }
 
 /* 侧边栏样式 */
@@ -920,24 +923,26 @@ onMounted(() => {
   border-right: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
+  height: 100vh;
 }
 
 .sidebar-header {
   padding: 20px;
   border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
 }
 
 .sidebar-header h2 {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 15px;
-  color: #333;
+  color: #333333;
 }
 
 .new-chat-btn {
   width: 100%;
   padding: 10px 16px;
-  background: #10a37f;
+  background: #007bff;
   color: white;
   border: none;
   border-radius: 8px;
@@ -950,7 +955,7 @@ onMounted(() => {
 }
 
 .new-chat-btn:hover {
-  background: #0d8a6a;
+  background: #0056b3;
 }
 
 .chat-history {
@@ -960,31 +965,35 @@ onMounted(() => {
 }
 
 .chat-item {
-  padding: 12px 20px;
+  padding: 12px 16px;
   cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   border-left: 3px solid transparent;
-  transition: all 0.2s;
 }
 
 .chat-item:hover {
-  background: #edf2f7;
+  background: #e9ecef;
 }
 
 .chat-item.active {
-  background: #e3f2fd;
-  border-left-color: #1976d2;
+  background: #e9ecef;
+  border-left-color: #007bff;
 }
 
 .chat-title {
   display: block;
   font-size: 14px;
-  color: #333;
+  color: #333333;
   margin-bottom: 4px;
 }
 
 .chat-date {
   font-size: 12px;
-  color: #666;
+  color: #666666;
 }
 
 .sidebar-footer {
@@ -1011,7 +1020,7 @@ onMounted(() => {
 
 .user-name {
   font-size: 14px;
-  color: #333;
+  color: #333333;
 }
 
 /* 主聊天区域样式 */
@@ -1032,7 +1041,7 @@ onMounted(() => {
 .chat-header h3 {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: #333333;
 }
 
 .chat-actions {
@@ -1047,10 +1056,11 @@ onMounted(() => {
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.2s;
+  color: #666666;
 }
 
 .action-btn:hover {
-  background: #f5f5f5;
+  background: #e9ecef;
 }
 
 .messages-container {
@@ -1060,12 +1070,15 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  background: #ffffff;
 }
 
 .message {
   display: flex;
   gap: 12px;
-  max-width: 80%;
+  max-width: 85%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message.user-message {
@@ -1094,6 +1107,9 @@ onMounted(() => {
   padding: 12px 16px;
   border-radius: 12px;
   position: relative;
+  max-width: 100%;
+  box-sizing: border-box;
+  color: #333333;
 }
 
 .user-message .message-content {
@@ -1103,8 +1119,12 @@ onMounted(() => {
 
 .message-text {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+  max-width: 100%;
+  color: #333333;
 }
 
 .message-time {
@@ -1114,6 +1134,14 @@ onMounted(() => {
 }
 
 .user-message .message-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dark-theme .message-time {
+  color: var(--text-tertiary);
+}
+
+.dark-theme .user-message .message-time {
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -1135,6 +1163,10 @@ onMounted(() => {
   background: #666;
   border-radius: 50%;
   animation: typing 1.4s infinite ease-in-out;
+}
+
+.dark-theme .typing-animation span {
+  background: var(--text-secondary);
 }
 
 .typing-animation span:nth-child(2) {
@@ -1219,6 +1251,10 @@ onMounted(() => {
     margin: 0.25rem 0;
   }
 
+  .dark-theme .hint-text {
+    color: var(--text-tertiary);
+  }
+
   .radio-group {
     display: flex;
     gap: 1rem;
@@ -1246,6 +1282,11 @@ onMounted(() => {
 
   .radio-text {
     font-weight: 500;
+    color: #333;
+  }
+
+  .dark-theme .radio-text {
+    color: var(--text-primary);
   }
 
   .model-config {
@@ -1284,6 +1325,11 @@ onMounted(() => {
   background: #fafafa;
 }
 
+.dark-theme .config-option {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
 .config-option:hover {
   border-color: #007bff;
   background: #f0f8ff;
@@ -1316,6 +1362,14 @@ onMounted(() => {
   color: #666;
   margin: 0;
   line-height: 1.4;
+}
+
+.dark-theme .option-content h4 {
+  color: var(--text-primary);
+}
+
+.dark-theme .option-content p {
+  color: var(--text-secondary);
 }
 
 /* 弹窗样式 */
@@ -1384,6 +1438,18 @@ onMounted(() => {
   background: #f5f5f5;
 }
 
+.dark-theme .modal-header h3 {
+  color: var(--text-primary);
+}
+
+.dark-theme .close-btn {
+  color: var(--text-secondary);
+}
+
+.dark-theme .close-btn:hover {
+  background: var(--bg-tertiary);
+}
+
 .modal-body {
   padding: 24px;
 }
@@ -1397,6 +1463,10 @@ onMounted(() => {
   margin-bottom: 8px;
   font-weight: 500;
   color: #333;
+}
+
+.dark-theme .input-group label {
+  color: var(--text-primary);
 }
 
 .api-key-input {
@@ -1471,6 +1541,14 @@ onMounted(() => {
   gap: 12px;
 }
 
+.dark-theme .user-info {
+  background: var(--bg-secondary);
+}
+
+.dark-theme .user-info:hover {
+  background: var(--bg-tertiary);
+}
+
 .user-info:hover {
   background: #edf2f7;
 }
@@ -1497,6 +1575,14 @@ onMounted(() => {
   font-size: 12px;
   color: #666;
   margin-left: auto;
+}
+
+.dark-theme .user-status {
+  color: var(--text-secondary);
+}
+
+.dark-theme .user-name {
+  color: var(--text-primary);
 }
 
 /* 登录注册弹窗样式 */
@@ -1693,4 +1779,8 @@ onMounted(() => {
     max-width: 90%;
   }
 }
+
+
+
+
 </style>

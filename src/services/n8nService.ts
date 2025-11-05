@@ -138,8 +138,10 @@ export class N8nService {
       console.log('💬 请求消息:', message)
       console.log('📦 请求数据:', JSON.stringify(requestData, null, 2))
 
-      // 直接使用配置的webhook URL，通过Vite代理解决CORS
-      const response = await fetch(this.config!.webhookUrl, {
+      // 使用代理路径解决CORS问题
+      // 将完整的n8n URL转换为代理路径
+      const proxyUrl = this.config!.webhookUrl.replace('https://n8n.lbuding.com', '/api/n8n')
+      const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,18 +153,7 @@ export class N8nService {
       if (!response.ok) {
         const errorText = await response.text();
         
-        // 针对n8n特定的错误提供友好提示
-        if (response.status === 404) {
-          try {
-            const errorData = JSON.parse(errorText);
-            if (errorData.message && errorData.message.includes('webhook')) {
-              throw new Error(`n8n工作流未激活：${errorData.message}\n\n💡 解决方案：请先在n8n工作流画布上点击"Execute workflow"按钮激活webhook`);
-            }
-          } catch {
-            // 如果JSON解析失败，使用原始错误
-          }
-        }
-        
+        // 简化错误处理，直接返回原始错误信息
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
