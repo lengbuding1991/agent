@@ -12,6 +12,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/aliyun\/api\/v1\/apps/, '/api/v1/apps'),
         secure: false
+      },
+      '/api/n8n': {
+        target: 'https://n8n.lbuding.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/n8n/, ''),
+        secure: false
       }
     }
   },

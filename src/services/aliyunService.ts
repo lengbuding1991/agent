@@ -147,13 +147,20 @@ export class AliyunService {
     messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, 
     onChunk: (chunk: string) => void
   ): Promise<void> {
+    console.log('🔍 [aliyunService] sendMessageStream 开始执行')
+    console.log('📋 当前配置:', this.config)
+    
     this.validateConfig()
+    console.log('✅ 配置验证通过')
 
     // 获取最后一条用户消息
     const userMessage = messages.filter(msg => msg.role === 'user').pop()
     if (!userMessage) {
+      console.error('❌ 没有找到用户消息')
       throw new Error('没有找到用户消息')
     }
+    
+    console.log('💬 用户消息:', userMessage.content)
     
     // 构建请求数据，使用阿里云百炼平台自定义应用API格式，启用流式
     const requestData = {
@@ -166,8 +173,12 @@ export class AliyunService {
         stream: true
       }
     }
+    
+    console.log('📤 请求数据:', requestData)
+    console.log('🌐 API URL:', this.buildApiUrl())
 
     try {
+      console.log('🚀 开始发送HTTP请求...')
       const response = await fetch(this.buildApiUrl(), {
         method: 'POST',
         headers: {
@@ -177,18 +188,27 @@ export class AliyunService {
         },
         body: JSON.stringify(requestData)
       })
+      
+      console.log('📥 HTTP响应状态:', response.status, response.statusText)
 
       if (!response.ok) {
         const errorText = await response.text()
+        console.error('❌ HTTP请求失败:', response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
+      
+      console.log('✅ HTTP请求成功，开始处理流式响应')
 
       const reader = response.body?.getReader()
       if (!reader) {
+        console.error('❌ 无法获取响应流读取器')
         throw new Error('无法读取响应流')
       }
+      
+      console.log('📖 获取到响应流读取器')
 
       const decoder = new TextDecoder()
+      console.log('🔤 文本解码器已初始化')
 
       try {
         let buffer = ''
@@ -232,7 +252,7 @@ export class AliyunService {
                     
                     // 添加延迟确保回调执行
                     await new Promise(resolve => setTimeout(resolve, 0))
-                    break
+                    // 移除break，继续处理后续数据块
                   }
                 }
               } catch (parseError) {

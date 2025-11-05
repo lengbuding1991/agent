@@ -171,124 +171,61 @@
         </div>
       </div>
 
-      <!-- API Key 输入弹窗 -->
+      <!-- 功能配置弹窗 -->
       <div v-if="showApiKeyDialog" class="modal-overlay" @click="showApiKeyDialog = false">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
-            <h3>设置 AI 模型配置</h3>
+            <h3>选择功能配置</h3>
             <button class="close-btn" @click="showApiKeyDialog = false">×</button>
           </div>
           <div class="modal-body">
-            <!-- 模型类型选择 -->
-            <div class="input-group">
-              <label>选择 AI 模型:</label>
-              <div class="radio-group">
-                <label class="radio-label">
-                  <input type="radio" v-model="modelType" value="deepseek" />
-                  <span class="radio-text">DeepSeek 模型</span>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" v-model="modelType" value="aliyun" />
-                  <span class="radio-text">阿里云大模型</span>
-                </label>
+            <!-- 配置类型选择 -->
+            <div class="config-type-selector">
+              <div class="config-option" :class="{ active: configType === 'douyin' }" @click="configType = 'douyin'">
+                <div class="option-icon">📱</div>
+                <div class="option-content">
+                  <h4>抖音知识库</h4>
+                  <p>连接阿里云大模型应用，提供智能问答服务</p>
+                </div>
+              </div>
+              
+              <div class="config-option" :class="{ active: configType === 'video' }" @click="configType = 'video'">
+                <div class="option-icon">🎬</div>
+                <div class="option-content">
+                  <h4>视频解析</h4>
+                  <p>连接n8n工作流，解析视频内容（开发中）</p>
+                </div>
               </div>
             </div>
 
-            <!-- DeepSeek 配置 -->
-            <div v-if="modelType === 'deepseek'" class="model-config">
-              <div class="input-group">
-                <label for="apiKey">DeepSeek API Key:</label>
-                <input
-                  id="apiKey"
-                  type="password"
-                  v-model="apiKey"
-                  placeholder="请输入您的 DeepSeek API Key"
-                  class="api-key-input"
-                />
-              </div>
+            <!-- 抖音知识库配置 -->
+            <div v-if="configType === 'douyin'" class="model-config">
               <div class="hint-text">
-                <p>🔒 您的 API Key 将安全存储在本地浏览器中</p>
-                <p>🌐 获取 API Key: <a href="https://platform.deepseek.com/api_keys" target="_blank" class="link">DeepSeek 控制台</a></p>
+                <p>✅ 抖音知识库已配置完成</p>
+                <p>🔗 连接: 阿里云大模型应用</p>
+                <p>🔑 API Key: 已内嵌配置</p>
+                <p>🆔 应用ID: c3e3bac8de9e47e2bc26cb30b6b459e2</p>
+                <p>🤖 模型: qwen-turbo</p>
+                <p>🌡️ 温度: 0.7</p>
+                <p>📝 最大令牌数: 2000</p>
+                <p>💡 用户登录后即可直接使用抖音知识库服务</p>
               </div>
             </div>
 
-            <!-- 阿里云大模型配置 -->
-            <div v-if="modelType === 'aliyun'" class="model-config">
-              <div class="input-group">
-                <label for="aliyunApiKey">阿里云 API Key:</label>
-                <input
-                  id="aliyunApiKey"
-                  type="password"
-                  v-model="aliyunConfig.apiKey"
-                  placeholder="请输入您的阿里云 API Key"
-                  class="api-key-input"
-                />
-                <div class="hint-text small">
-                  <p>💡 在阿里云百炼控制台的API密钥管理中获取</p>
-                </div>
-              </div>
-              <div class="input-group">
-                <label for="aliyunAppId">应用ID:</label>
-                <input
-                  id="aliyunAppId"
-                  type="text"
-                  v-model="aliyunConfig.appId"
-                  placeholder="请输入您的应用ID，例如：c3e3bac8de9e47e2bc26cb30b6b459e2"
-                  class="api-key-input"
-                />
-                <div class="hint-text small">
-                  <p>💡 应用ID用于标识您的应用，在阿里云百炼控制台中获取</p>
-                </div>
-              </div>
-
-              <div class="input-group">
-                <label for="aliyunAgentId">智能体ID (可选):</label>
-                <input
-                  id="aliyunAgentId"
-                  type="text"
-                  v-model="aliyunConfig.agentId"
-                  placeholder="请输入您的智能体ID，例如：agent-123456"
-                  class="api-key-input"
-                />
-                <div class="hint-text small">
-                  <p>💡 智能体ID用于连接您发布的特定智能体</p>
-                  <p>📝 在阿里云百炼智能体管理页面获取</p>
-                </div>
-              </div>
-              <div class="input-row">
-                <div class="input-group half-width">
-                  <label for="temperature">温度 (0-1):</label>
-                  <input
-                    id="temperature"
-                    type="number"
-                    v-model.number="aliyunConfig.temperature"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    class="api-key-input"
-                  />
-                </div>
-                <div class="input-group half-width">
-                  <label for="maxTokens">最大令牌数:</label>
-                  <input
-                    id="maxTokens"
-                    type="number"
-                    v-model.number="aliyunConfig.maxTokens"
-                    min="1"
-                    max="4000"
-                    class="api-key-input"
-                  />
-                </div>
-              </div>
+            <!-- 视频解析配置 -->
+            <div v-if="configType === 'video'" class="model-config">
               <div class="hint-text">
-                <p>🔒 您的配置将安全存储在本地浏览器中</p>
-                <p>🌐 获取阿里云 API Key: <a href="https://dashscope.aliyun.com/" target="_blank" class="link">阿里云百炼控制台</a></p>
+                <p>🚧 视频解析功能开发中</p>
+                <p>🔗 连接: n8n工作流</p>
+                <p>📋 功能: 解析视频内容，提取关键信息</p>
+                <p>⏳ 状态: 接口预留，等待n8n工作流配置</p>
+                <p>💡 后续将集成视频解析和内容分析功能</p>
               </div>
             </div>
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" @click="showApiKeyDialog = false">取消</button>
-            <button class="btn-primary" @click="saveApiKey">保存配置</button>
+            <button class="btn-primary" @click="saveConfig">保存配置</button>
           </div>
         </div>
       </div>
@@ -359,6 +296,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import { aliyunService } from '../services/aliyunService'
+import { n8nService } from '../services/n8nService'
 import notification from '../composables/useNotification'
 
 // 初始化authStore
@@ -385,8 +323,10 @@ const currentChatId = ref('')
 const messagesContainer = ref<HTMLElement>()
 const messageInput = ref<HTMLTextAreaElement>()
 const showApiKeyDialog = ref(false)
-const apiKey = ref('')
 const showUserMenu = ref(false)
+
+// 配置类型管理
+const configType = ref<'douyin' | 'video'>('douyin') // 默认选择抖音知识库
 
 // 登录注册加载状态
 const loginLoading = ref(false)
@@ -477,8 +417,6 @@ const switchChat = (chatId: string) => {
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isLoading.value) return
 
-
-
   const userMessage: Message = {
     id: Date.now().toString(),
     role: 'user',
@@ -503,40 +441,61 @@ const sendMessage = async () => {
   isLoading.value = true
 
   try {
-    if (modelType.value === 'aliyun') {
+    console.log('🔍 [ChatPage] 开始处理用户消息')
+    console.log('📋 当前配置类型:', configType.value)
+    
+    // 根据配置类型处理消息
+    if (configType.value === 'douyin') {
+      console.log('🌐 使用抖音知识库（阿里云大模型）')
+      console.log('📋 当前配置:', aliyunConfig.value)
       
-      // 调用阿里云大模型（流式响应）- DashScope SDK格式
-      if (!aliyunConfig.value.apiKey || !aliyunConfig.value.appId) {
-        throw new Error('请先配置阿里云大模型的API Key和应用ID')
-      }
-      
-      // 配置阿里云服务
+      // 配置已内嵌，直接使用
+      console.log('⚙️ 设置阿里云配置...')
       aliyunService.setConfig(aliyunConfig.value)
+      console.log('✅ 配置设置完成')
+    } else if (configType.value === 'video') {
+      console.log('🎬 使用视频解析功能（n8n工作流）')
       
-      // 创建流式响应消息
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '',
-        timestamp: new Date()
-      }
+      // 设置n8n工作流配置
+      n8nService.setConfig({
+        webhookUrl: 'https://n8n.lbuding.com/webhook-test/parserAll',
+        timeout: 30000
+      })
+      console.log('✅ n8n配置设置完成')
+    }
+    
+    // 创建流式响应消息
+    const assistantMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: '',
+      timestamp: new Date()
+    }
+    
+    if (currentChat.value) {
+      currentChat.value.messages.push(assistantMessage)
+    }
+    
+    // 构建消息历史
+    const messages = currentMessages.value.map(msg => ({
+      role: msg.role,
+      content: msg.content
+    }))
+    
+    // 使用流式响应
+    try {
+      console.log('🚀 开始调用API...')
+      console.log('💬 发送的消息:', messages)
       
-      if (currentChat.value) {
-        currentChat.value.messages.push(assistantMessage)
-      }
-      
-      // 构建消息历史
-      const messages = currentMessages.value.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
-      
-      // 使用流式响应
-      try {
+      // 根据配置类型调用不同的API
+      if (configType.value === 'douyin') {
+        console.log('🤖 调用阿里云大模型API...');
+        
         await aliyunService.sendMessageStream(
           messages,
           // onMessage回调：处理每个数据块
           (chunk: string) => {
+            console.log('📥 收到数据块:', chunk)
             if (currentChat.value && assistantMessage) {
               // 使用Vue的响应式更新方式
               const index = currentChat.value.messages.findIndex(msg => msg.id === assistantMessage.id)
@@ -546,47 +505,140 @@ const sendMessage = async () => {
                 currentChat.value.messages = [...currentChat.value.messages]
                 // 实时更新显示
                 scrollToBottom()
+                console.log('✅ 消息已更新，当前内容:', currentChat.value.messages[index].content)
               }
             }
           }
         )
-      } catch (error) {
-        throw error
+        console.log('🎉 阿里云流式响应处理完成')
+        
+      } else if (configType.value === 'video') {
+        console.log('🎬 调用n8n工作流API...');
+        console.log('💬 发送给n8n的原始消息:', messageText);
+        console.log('🔍 当前配置类型:', configType.value);
+        console.log('🔍 当前聊天ID:', currentChat.value?.id);
+        console.log('🔍 助手消息ID:', assistantMessage?.id);
+        
+        // 调用n8n工作流进行视频解析
+        await n8nService.parseVideoStream(
+          messageText,
+          // onChunk回调：处理每个数据块
+          (chunk) => {
+            console.log('📥 ========== ChatPage收到n8n数据块 ==========');
+            console.log('📥 完整数据块对象:', chunk);
+            console.log('📥 数据块类型:', chunk.type);
+            console.log('📥 数据块数据:', chunk.data);
+            console.log('📥 是否为最终块:', chunk.isFinal);
+            console.log('📥 =========================================');
+            
+            if (currentChat.value && assistantMessage) {
+              // 使用Vue的响应式更新方式
+              const index = currentChat.value.messages.findIndex(msg => msg.id === assistantMessage.id)
+              if (index !== -1) {
+                // 处理不同类型的n8n响应
+                if (chunk.type === 'text') {
+                  if (chunk.data && chunk.data !== '') {
+                    try {
+                      // 解析JSON数据并提取URL
+                      const jsonData = JSON.parse(chunk.data as string)
+                      console.log('📥 解析后的JSON数据:', jsonData)
+                      
+                      // 提取URL：支持多种数据结构
+                      let videoUrl = ''
+                      
+                      if (Array.isArray(jsonData) && jsonData.length > 0) {
+                        // 处理数组格式：[{"data":[{"url":"..."}]}]
+                        const firstItem = jsonData[0]
+                        if (firstItem.data && Array.isArray(firstItem.data) && firstItem.data.length > 0) {
+                          videoUrl = firstItem.data[0].url
+                        }
+                      } else if (jsonData.data && Array.isArray(jsonData.data) && jsonData.data.length > 0) {
+                        // 处理对象格式：{"data":[{"url":"..."}]}
+                        videoUrl = jsonData.data[0].url
+                      } else if (jsonData.url) {
+                        // 处理直接URL格式：{"url":"..."}
+                        videoUrl = jsonData.url
+                      }
+                      
+                      if (videoUrl) {
+                        console.log('📥 提取到的视频URL:', videoUrl)
+                        currentChat.value.messages[index].content += `\n🎬 视频解析成功！\n🔗 下载链接：${videoUrl}`
+                      } else {
+                        console.log('📥 未找到URL，显示原始数据')
+                        currentChat.value.messages[index].content += chunk.data as string
+                      }
+                    } catch (error) {
+                      console.warn('📥 JSON解析失败，显示原始数据:', error)
+                      currentChat.value.messages[index].content += chunk.data as string
+                    }
+                  }
+                } else if (chunk.type === 'video_info') {
+                  // 视频信息格式化显示
+                  const videoInfo = chunk.data as any
+                  currentChat.value.messages[index].content += `\n📹 视频信息: ${JSON.stringify(videoInfo, null, 2)}`
+                } else if (chunk.type === 'analysis') {
+                  // 分析结果格式化显示
+                  const analysis = chunk.data as any
+                  currentChat.value.messages[index].content += `\n📊 分析结果: ${JSON.stringify(analysis, null, 2)}`
+                } else if (chunk.type === 'error') {
+                  currentChat.value.messages[index].content += `\n❌ 错误: ${chunk.data}`
+                } else {
+                  // 默认处理：显示所有其他类型的数据
+                  console.log('🔍 收到未知类型的数据块:', chunk)
+                  currentChat.value.messages[index].content += `\n📦 原始数据: ${JSON.stringify(chunk, null, 2)}`
+                }
+                
+                // 强制触发响应式更新
+                currentChat.value.messages = [...currentChat.value.messages]
+                // 实时更新显示
+                scrollToBottom()
+                console.log('✅ n8n消息已更新，当前内容:', currentChat.value.messages[index].content)
+                
+                // 如果是最终块，检查是否有内容，如果没有则显示提示
+                if (chunk.isFinal && !currentChat.value.messages[index].content.trim()) {
+                  currentChat.value.messages[index].content = "🎬 视频解析完成，但未返回解析结果\n\n💡 可能的原因：\n1. n8n工作流配置问题 - 工作流可能没有正确返回数据\n2. 视频链接格式问题 - 请检查视频链接是否正确\n3. n8n工作流处理逻辑问题 - 工作流可能未正确处理视频解析\n\n🔧 建议：\n1. 检查n8n工作流配置和返回数据格式\n2. 尝试不同的视频链接\n3. 联系管理员检查n8n工作流逻辑"
+                  // 再次触发更新
+                  currentChat.value.messages = [...currentChat.value.messages]
+                  scrollToBottom()
+                }
+              }
+            }
+          }
+        )
+        console.log('🎉 n8n工作流响应处理完成')
       }
-      
-      // 更新最后活跃时间
-      if (currentChat.value) {
-        currentChat.value.lastActive = new Date()
-      }
-    } else {
-      // DeepSeek模型（暂时保持模拟回复）
-      const assistantResponse = `这是对"${messageText}"的模拟回复。在实际应用中，这里会调用DeepSeek API来获取真实回复。`
-      
-      // 添加AI回复到聊天
-      if (currentChat.value) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: assistantResponse,
-          timestamp: new Date()
-        }
-        currentChat.value.messages.push(assistantMessage)
-        currentChat.value.lastActive = new Date()
-      }
+    } catch (error) {
+      console.error('❌ API调用失败:', error)
+      throw error
     }
-  } catch (error) {
     
-    // 添加错误消息到聊天
+    // 更新最后活跃时间
     if (currentChat.value) {
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: `抱歉，发送消息时出现错误：${error instanceof Error ? error.message : '未知错误'}`,
-        timestamp: new Date()
-      }
-      currentChat.value.messages.push(errorMessage)
       currentChat.value.lastActive = new Date()
     }
+  } catch (error) {
+      console.error('❌ API调用失败:', error)
+      
+      // 添加错误消息到聊天
+      if (currentChat.value) {
+        let errorContent = `抱歉，发送消息时出现错误：${error instanceof Error ? error.message : '未知错误'}`
+        
+        // 针对n8n工作流特定的错误提供友好提示
+        if (configType.value === 'video' && error instanceof Error) {
+          if (error.message.includes('n8n工作流未激活') || error.message.includes('webhook')) {
+            errorContent = `🎬 视频解析功能暂时不可用\n\n❌ 错误原因：${error.message}\n\n💡 解决方案：\n1. 请先在n8n工作流画布上点击"Execute workflow"按钮激活webhook\n2. 然后重新尝试视频解析功能\n3. 如果问题持续，请联系管理员检查n8n工作流配置`
+          }
+        }
+        
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: errorContent,
+          timestamp: new Date()
+        }
+        currentChat.value.messages.push(errorMessage)
+        currentChat.value.lastActive = new Date()
+      }
   } finally {
     isLoading.value = false
     scrollToBottom()
@@ -758,64 +810,52 @@ const logout = async () => {
   }
 }
 
-// 阿里云大模型配置（DashScope SDK格式）
+// 阿里云大模型配置（DashScope SDK格式）- 内嵌配置
 const aliyunConfig = ref({
-  apiKey: '',
-  appId: '',
+  apiKey: 'sk-7511ca603ff44019b2395b3d94630ffe',
+  appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2',
   model: 'qwen-turbo',
   temperature: 0.7,
   maxTokens: 2000,
   agentId: ''
 })
 
-// 模型类型选择
-const modelType = ref('deepseek') // 'deepseek' 或 'aliyun'
+// 模型类型 - 只保留阿里云大模型
+const modelType = ref('aliyun')
 
-// API Key 相关方法
-const saveApiKey = () => {
+// 保存配置（支持抖音知识库和视频解析）
+const saveConfig = () => {
   if (!isLoggedIn.value) {
-    notification.error('请先登录后再设置 API Key')
+    notification.error('请先登录后再保存配置')
     showApiKeyDialog.value = false
     showLoginDialog.value = true
     return
   }
   
-  if (modelType.value === 'deepseek') {
-    if (!apiKey.value.trim()) {
-      notification.error('请输入有效的DeepSeek API Key')
-      return
+  if (configType.value === 'douyin') {
+    // 保存抖音知识库配置（阿里云大模型）
+    localStorage.setItem('douyin-config', JSON.stringify({
+      ...aliyunConfig.value,
+      configType: 'douyin',
+      lastUpdated: new Date().toISOString()
+    }))
+    console.log('抖音知识库配置已保存:', aliyunConfig.value)
+    notification.success('抖音知识库配置保存成功！')
+  } else if (configType.value === 'video') {
+    // 保存视频解析配置（预留接口）
+    const videoConfig = {
+      configType: 'video',
+      service: 'n8n-workflow',
+      status: 'development',
+      lastUpdated: new Date().toISOString(),
+      features: ['video-parsing', 'content-analysis']
     }
-    
-    // 保存DeepSeek API Key
-    localStorage.setItem('deepseek-api-key', apiKey.value)
-    notification.success('DeepSeek API Key 保存成功！')
-  } else {
-    // 阿里云大模型配置（DashScope SDK格式）
-    if (!aliyunConfig.value.apiKey.trim()) {
-      notification.error('请输入有效的阿里云API Key')
-      return
-    }
-    
-    if (!aliyunConfig.value.appId.trim()) {
-      notification.error('请输入应用ID')
-      return
-    }
-    
-    if (!aliyunConfig.value.model.trim()) {
-      notification.error('请输入模型名称')
-      return
-    }
-    
-    // 保存阿里云配置
-    localStorage.setItem('aliyun-config', JSON.stringify(aliyunConfig.value))
-    console.log('阿里云配置已保存:', aliyunConfig.value)
-    notification.success('阿里云大模型配置保存成功！')
+    localStorage.setItem('video-config', JSON.stringify(videoConfig))
+    console.log('视频解析配置已保存:', videoConfig)
+    notification.success('视频解析配置已保存！接口已预留，等待n8n工作流配置')
   }
   
   showApiKeyDialog.value = false
-  apiKey.value = ''
-  // 注意：这里不应该重置aliyunConfig，因为配置已经保存到localStorage
-  // 并且在onMounted中会重新加载，重置会导致用户输入丢失
 }
 
 // 生命周期
@@ -825,18 +865,19 @@ onMounted(() => {
   }
   focusInput()
   
-  // 加载已保存的 API Key
-  const savedApiKey = localStorage.getItem('deepseek-api-key')
-  if (savedApiKey) {
-    apiKey.value = savedApiKey
-  }
-  
-  // 加载已保存的阿里云配置
+  // 加载已保存的阿里云配置（优先使用内嵌配置）
   const savedAliyunConfig = localStorage.getItem('aliyun-config')
   if (savedAliyunConfig) {
     try {
-      aliyunConfig.value = JSON.parse(savedAliyunConfig)
-      console.log('阿里云配置已加载:', aliyunConfig.value)
+      const parsedConfig = JSON.parse(savedAliyunConfig)
+      // 只加载用户自定义的配置项，保持内嵌的API Key和应用ID不变
+      aliyunConfig.value = {
+        ...aliyunConfig.value, // 保持内嵌配置
+        ...parsedConfig,       // 覆盖用户自定义配置
+        apiKey: aliyunConfig.value.apiKey, // 强制使用内嵌API Key
+        appId: aliyunConfig.value.appId    // 强制使用内嵌应用ID
+      }
+      console.log('阿里云配置已加载（内嵌配置优先）:', aliyunConfig.value)
     } catch (error) {
       console.error('解析阿里云配置失败:', error)
     }
@@ -1223,6 +1264,59 @@ onMounted(() => {
   .half-width {
     flex: 1;
   }
+
+/* 配置类型选择器样式 */
+.config-type-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.config-option {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #fafafa;
+}
+
+.config-option:hover {
+  border-color: #007bff;
+  background: #f0f8ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+}
+
+.config-option.active {
+  border-color: #007bff;
+  background: #e3f2fd;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
+}
+
+.option-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  width: 40px;
+  text-align: center;
+}
+
+.option-content h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #333;
+}
+
+.option-content p {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+  line-height: 1.4;
+}
 
 /* 弹窗样式 */
 .modal-overlay {
