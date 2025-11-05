@@ -116,14 +116,7 @@ export class AliyunService {
       }
     }
 
-    console.log('🔍 [aliyunService] 非流式调用开始')
-    console.log('📋 配置信息:', this.config)
-    console.log('💬 用户消息:', userMessage.content)
-    console.log('🚀 请求数据:', requestData)
-    console.log('🌐 API URL:', this.buildApiUrl())
-
     try {
-      console.log('📤 开始发送请求...')
       const response = await axios.post(this.buildApiUrl(), requestData, {
         headers: {
           'Authorization': `Bearer ${this.config!.apiKey}`,
@@ -131,18 +124,14 @@ export class AliyunService {
         }
       })
       
-      console.log('✅ 请求成功，响应数据:', response.data)
       return response.data
     } catch (error: any) {
-      console.error('❌ 请求失败:', error)
-      
       // 处理网络错误和API错误
       if (error.code === 'ERR_NETWORK' || error.message.includes('Failed to fetch')) {
         throw new Error('网络连接失败，请检查网络连接或API端点配置')
       }
       
       if (error.response) {
-        console.error('HTTP错误详情:', error.response.status, error.response.data)
         throw new Error(`阿里云百炼平台API调用失败: ${error.response.status} - ${JSON.stringify(error.response.data)}`)
       }
       
@@ -156,9 +145,6 @@ export class AliyunService {
     messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, 
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    console.log('🔍 [aliyunService] 流式调用开始')
-    console.log('📋 配置信息:', this.config)
-    
     this.validateConfig()
 
     // 获取最后一条用户消息
@@ -179,12 +165,7 @@ export class AliyunService {
       }
     }
 
-    console.log('💬 用户消息:', userMessage.content)
-    console.log('🚀 请求数据:', requestData)
-    console.log('🌐 API URL:', this.buildApiUrl())
-
     try {
-      console.log('📤 开始发送流式请求...')
       const response = await fetch(this.buildApiUrl(), {
         method: 'POST',
         headers: {
@@ -195,16 +176,10 @@ export class AliyunService {
         body: JSON.stringify(requestData)
       })
 
-      console.log('📥 响应状态:', response.status, response.statusText)
-      console.log('📋 响应头:', Object.fromEntries(response.headers.entries()))
-
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('❌ HTTP错误:', response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
-
-      console.log('✅ HTTP请求成功，开始处理流式响应...')
 
       const reader = response.body?.getReader()
       if (!reader) {
@@ -238,63 +213,33 @@ export class AliyunService {
             const trimmedLine = line.trim()
             if (!trimmedLine) continue
             
-            console.log('📥 原始SSE行:', trimmedLine, '长度:', trimmedLine.length)
-            
             // 处理阿里云百炼平台自定义应用的SSE格式
-            // 检查多种可能的data行格式
-            if (trimmedLine.startsWith('data:') || trimmedLine.startsWith('data: ')) {
-              console.log('✅ 检测到data行，开始处理...')
-              // 正确提取JSON数据：去掉"data: "前缀，并处理可能的引号问题
+            if (trimmedLine.startsWith('data: ') || trimmedLine.startsWith('data:')) {
+              // 提取数据部分，处理可能的引号问题
               const dataStr = trimmedLine.replace(/^data:\s*"?/, '').replace(/"?$/, '')
-              console.log('🔍 准备解析SSE数据:', dataStr)
               
               try {
                 const data = JSON.parse(dataStr)
-                console.log('✅ JSON解析成功:', data)
                 
                 // 处理百炼平台自定义应用响应格式
                 if (data.output && data.output.text) {
                   const content = data.output.text
                   if (content) {
-                    console.log('✅ 收到有效内容:', content)
-                    
-                    // 阿里云百炼平台返回的是完整响应，不是分块数据
-                    // 这里需要一次性传递完整内容，而不是分块追加
-                    console.log('📤 准备调用onChunk回调...')
                     onChunk(content)
-                    console.log('✅ onChunk回调已调用')
                     hasReceivedResult = true
                     
-                    // 由于是完整响应，收到后可以直接结束流式处理
-                    console.log('✅ 完整响应已接收，流式处理完成')
-                    
-                    // 确保回调函数执行完毕后再结束
+                    // 添加延迟确保回调执行
                     await new Promise(resolve => setTimeout(resolve, 0))
-                    break // 跳出循环，结束流式处理
+                    break
                   }
                 }
               } catch (parseError) {
-                console.warn('❌ 解析流数据失败:', parseError, '原始数据:', dataStr)
+                // 忽略解析错误，继续处理其他行
               }
-            }
-            
-            // 处理阿里云百炼平台的特殊SSE格式（包含HTTP状态的行）
-            if (trimmedLine.startsWith(':HTTP_STATUS/')) {
-              console.log('📋 阿里云HTTP状态行:', trimmedLine)
-              // 这个行后面紧跟着data行，我们继续处理下一行
-              continue
-            }
-            
-            // 处理事件类型
-            if (trimmedLine.startsWith('event: ')) {
-              const eventType = trimmedLine.slice(7)
-              console.log('📋 事件类型:', eventType)
-            }
-            
-            // 处理完成信号
-            if (trimmedLine === 'data: [DONE]' || trimmedLine.includes('finish_reason')) {
-              console.log('✅ 流式响应完成')
-              return
+            } else if (trimmedLine.startsWith(':HTTP_STATUS/')) {
+              // 处理阿里云HTTP状态行
+            } else if (trimmedLine.startsWith('event:')) {
+              // 处理事件类型
             }
           }
         }
@@ -302,7 +247,6 @@ export class AliyunService {
         reader.releaseLock()
       }
     } catch (error) {
-      console.error('阿里云百炼平台流式API调用失败:', error)
       throw error
     }
   }

@@ -477,10 +477,7 @@ const switchChat = (chatId: string) => {
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isLoading.value) return
 
-  console.log('🔍 [ChatPage] sendMessage 开始调用')
-  console.log('📝 消息内容:', inputMessage.value.trim())
-  console.log('🤖 模型类型:', modelType.value)
-  console.log('⚙️ 阿里云配置:', aliyunConfig.value)
+
 
   const userMessage: Message = {
     id: Date.now().toString(),
@@ -507,15 +504,11 @@ const sendMessage = async () => {
 
   try {
     if (modelType.value === 'aliyun') {
-      console.log('🚀 使用阿里云大模型')
       
       // 调用阿里云大模型（流式响应）- DashScope SDK格式
       if (!aliyunConfig.value.apiKey || !aliyunConfig.value.appId) {
-        console.error('❌ 阿里云配置不完整')
         throw new Error('请先配置阿里云大模型的API Key和应用ID')
       }
-      
-      console.log('✅ 阿里云配置检查通过')
       
       // 配置阿里云服务
       aliyunService.setConfig(aliyunConfig.value)
@@ -538,16 +531,12 @@ const sendMessage = async () => {
         content: msg.content
       }))
       
-      console.log('📋 消息历史:', messages)
-      
       // 使用流式响应
       try {
-        console.log('📤 开始调用阿里云API...')
         await aliyunService.sendMessageStream(
           messages,
           // onMessage回调：处理每个数据块
           (chunk: string) => {
-            console.log('📥 收到流式响应块:', chunk)
             if (currentChat.value && assistantMessage) {
               // 使用Vue的响应式更新方式
               const index = currentChat.value.messages.findIndex(msg => msg.id === assistantMessage.id)
@@ -561,9 +550,7 @@ const sendMessage = async () => {
             }
           }
         )
-        console.log('✅ 阿里云API调用完成')
       } catch (error) {
-        console.error('❌ 阿里云流式API调用失败:', error)
         throw error
       }
       
@@ -588,7 +575,6 @@ const sendMessage = async () => {
       }
     }
   } catch (error) {
-    console.error('❌ 发送消息失败:', error)
     
     // 添加错误消息到聊天
     if (currentChat.value) {
@@ -761,7 +747,6 @@ const logout = async () => {
       currentUser.value = guestUser
       isLoggedIn.value = false
       showUserMenu.value = false
-      console.log('用户已退出登录')
       notification.success('已退出登录')
     } else {
       const errorMessage = (error as Error)?.message || (error as Error)?.toString() || '未知错误'
@@ -803,7 +788,6 @@ const saveApiKey = () => {
     
     // 保存DeepSeek API Key
     localStorage.setItem('deepseek-api-key', apiKey.value)
-    console.log('DeepSeek API Key已保存:', apiKey.value)
     notification.success('DeepSeek API Key 保存成功！')
   } else {
     // 阿里云大模型配置（DashScope SDK格式）
