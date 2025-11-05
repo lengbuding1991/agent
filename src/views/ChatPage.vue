@@ -55,9 +55,9 @@
               </div>
             </div>
             <div class="menu-divider"></div>
-            <div class="menu-item" @click="showApiKeyDialog = true; showUserMenu = false">
-              <span class="menu-icon">🔑</span>
-              <span>设置 API Key</span>
+            <div class="menu-item" @click="showModelSwitchDialog = true; showUserMenu = false">
+              <span class="menu-icon">🔄</span>
+              <span>模型切换</span>
             </div>
             <div class="menu-item" @click="logout">
               <span class="menu-icon">🚪</span>
@@ -171,12 +171,12 @@
         </div>
       </div>
 
-      <!-- 功能配置弹窗 -->
-      <div v-if="showApiKeyDialog" class="modal-overlay" @click="showApiKeyDialog = false">
+      <!-- 模型切换弹窗 -->
+      <div v-if="showModelSwitchDialog" class="modal-overlay" @click="showModelSwitchDialog = false">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
-            <h3>选择功能配置</h3>
-            <button class="close-btn" @click="showApiKeyDialog = false">×</button>
+            <h3>模型切换</h3>
+            <button class="close-btn" @click="showModelSwitchDialog = false">×</button>
           </div>
           <div class="modal-body">
             <!-- 配置类型选择 -->
@@ -224,8 +224,8 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn-secondary" @click="showApiKeyDialog = false">取消</button>
-            <button class="btn-primary" @click="saveConfig">保存配置</button>
+            <button class="btn-secondary" @click="showModelSwitchDialog = false">取消</button>
+            <button class="btn-primary" @click="saveConfig">切换模型</button>
           </div>
         </div>
       </div>
@@ -322,7 +322,7 @@ const isLoading = ref(false)
 const currentChatId = ref('')
 const messagesContainer = ref<HTMLElement>()
 const messageInput = ref<HTMLTextAreaElement>()
-const showApiKeyDialog = ref(false)
+const showModelSwitchDialog = ref(false)
 const showUserMenu = ref(false)
 
 
@@ -829,8 +829,8 @@ const modelType = ref('aliyun')
 // 保存配置（支持抖音知识库和视频解析）
 const saveConfig = () => {
   if (!isLoggedIn.value) {
-    notification.error('请先登录后再保存配置')
-    showApiKeyDialog.value = false
+    notification.error('请先登录后再切换模型')
+    showModelSwitchDialog.value = false
     showLoginDialog.value = true
     return
   }
@@ -843,7 +843,7 @@ const saveConfig = () => {
       lastUpdated: new Date().toISOString()
     }))
     console.log('抖音知识库配置已保存:', aliyunConfig.value)
-    notification.success('抖音知识库配置保存成功！')
+    notification.success('已切换到抖音知识库模型！')
   } else if (configType.value === 'video') {
     // 保存视频解析配置（预留接口）
     const videoConfig = {
@@ -855,14 +855,33 @@ const saveConfig = () => {
     }
     localStorage.setItem('video-config', JSON.stringify(videoConfig))
     console.log('视频解析配置已保存:', videoConfig)
-    notification.success('视频解析配置已保存！接口已预留，等待n8n工作流配置')
+    notification.success('已切换到视频解析模型！接口已预留，等待n8n工作流配置')
   }
   
-  showApiKeyDialog.value = false
+  showModelSwitchDialog.value = false
 }
 
 // 生命周期
-onMounted(() => {
+onMounted(async () => {
+  // 初始化认证状态
+  await authStore.initializeAuth()
+  
+  // 设置认证状态监听器
+  authStore.setupAuthListener()
+  
+  // 根据认证状态更新界面
+  if (authStore.isAuthenticated && authStore.user) {
+    currentUser.value = {
+      id: authStore.user.id,
+      name: authStore.user.username,
+      avatar: '👤',
+      status: '在线',
+      isLoggedIn: true,
+      email: authStore.user.email
+    }
+    isLoggedIn.value = true
+  }
+  
   if (chatHistory.value.length > 0) {
     currentChatId.value = chatHistory.value[0].id
   }
@@ -1110,6 +1129,9 @@ onMounted(() => {
   max-width: 100%;
   box-sizing: border-box;
   color: #333333;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .user-message .message-content {
