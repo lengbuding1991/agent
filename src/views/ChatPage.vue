@@ -223,33 +223,12 @@
                   placeholder="请输入您的阿里云 API Key"
                   class="api-key-input"
                 />
-              </div>
-              <div class="input-group">
-                <label for="aliyunApiUrl">API URL:</label>
-                <input
-                  id="aliyunApiUrl"
-                  type="text"
-                  v-model="aliyunConfig.apiUrl"
-                  placeholder="请输入阿里云 API 地址，例如：https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
-                  class="api-key-input"
-                />
                 <div class="hint-text small">
-                  <p>💡 阿里云百炼OpenAI兼容API地址：https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions</p>
-                  <p>📝 已验证可用的API地址，支持通义千问等模型</p>
+                  <p>💡 在阿里云百炼控制台的API密钥管理中获取</p>
                 </div>
               </div>
               <div class="input-group">
-                <label for="aliyunModel">模型名称:</label>
-                <input
-                  id="aliyunModel"
-                  type="text"
-                  v-model="aliyunConfig.model"
-                  placeholder="请输入模型名称，例如：qwen-turbo"
-                  class="api-key-input"
-                />
-              </div>
-              <div class="input-group">
-                <label for="aliyunAppId">应用ID (可选):</label>
+                <label for="aliyunAppId">应用ID:</label>
                 <input
                   id="aliyunAppId"
                   type="text"
@@ -259,7 +238,21 @@
                 />
                 <div class="hint-text small">
                   <p>💡 应用ID用于标识您的应用，在阿里云百炼控制台中获取</p>
-                  <p>📝 如果不确定，可以留空</p>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <label for="aliyunAgentId">智能体ID (可选):</label>
+                <input
+                  id="aliyunAgentId"
+                  type="text"
+                  v-model="aliyunConfig.agentId"
+                  placeholder="请输入您的智能体ID，例如：agent-123456"
+                  class="api-key-input"
+                />
+                <div class="hint-text small">
+                  <p>💡 智能体ID用于连接您发布的特定智能体</p>
+                  <p>📝 在阿里云百炼智能体管理页面获取</p>
                 </div>
               </div>
               <div class="input-row">
@@ -484,6 +477,11 @@ const switchChat = (chatId: string) => {
 const sendMessage = async () => {
   if (!inputMessage.value.trim() || isLoading.value) return
 
+  console.log('🔍 [ChatPage] sendMessage 开始调用')
+  console.log('📝 消息内容:', inputMessage.value.trim())
+  console.log('🤖 模型类型:', modelType.value)
+  console.log('⚙️ 阿里云配置:', aliyunConfig.value)
+
   const userMessage: Message = {
     id: Date.now().toString(),
     role: 'user',
@@ -509,10 +507,15 @@ const sendMessage = async () => {
 
   try {
     if (modelType.value === 'aliyun') {
-      // 调用阿里云大模型（流式响应）
-      if (!aliyunConfig.value.apiKey || !aliyunConfig.value.apiUrl) {
-        throw new Error('请先配置阿里云大模型的API Key和API URL')
+      console.log('🚀 使用阿里云大模型')
+      
+      // 调用阿里云大模型（流式响应）- DashScope SDK格式
+      if (!aliyunConfig.value.apiKey || !aliyunConfig.value.appId) {
+        console.error('❌ 阿里云配置不完整')
+        throw new Error('请先配置阿里云大模型的API Key和应用ID')
       }
+      
+      console.log('✅ 阿里云配置检查通过')
       
       // 配置阿里云服务
       aliyunService.setConfig(aliyunConfig.value)
@@ -529,32 +532,45 @@ const sendMessage = async () => {
         currentChat.value.messages.push(assistantMessage)
       }
       
+      // 构建消息历史
+      const messages = currentMessages.value.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+      
+      console.log('📋 消息历史:', messages)
+      
       // 使用流式响应
-      await aliyunService.sendMessageStream(
-        messageText,
-        // onChunk回调：处理每个数据块
-        (chunk: string) => {
-          if (currentChat.value && assistantMessage) {
-            assistantMessage.content += chunk
-            // 实时更新显示
-            scrollToBottom()
+      try {
+        console.log('📤 开始调用阿里云API...')
+        await aliyunService.sendMessageStream(
+          messages,
+          // onMessage回调：处理每个数据块
+          (chunk: string) => {
+            console.log('📥 收到流式响应块:', chunk)
+            if (currentChat.value && assistantMessage) {
+              // 使用Vue的响应式更新方式
+              const index = currentChat.value.messages.findIndex(msg => msg.id === assistantMessage.id)
+              if (index !== -1) {
+                currentChat.value.messages[index].content += chunk
+                // 强制触发响应式更新
+                currentChat.value.messages = [...currentChat.value.messages]
+                // 实时更新显示
+                scrollToBottom()
+              }
+            }
           }
-        },
-        // onComplete回调：处理完成
-        (fullResponse: string) => {
-          console.log('流式响应完成:', fullResponse)
-          if (currentChat.value) {
-            currentChat.value.lastActive = new Date()
-          }
-        },
-        // onError回调：处理错误
-        (error: Error) => {
-          console.error('流式响应错误:', error)
-          if (currentChat.value && assistantMessage) {
-            assistantMessage.content = `抱歉，AI回复时出现错误：${error.message}`
-          }
-        }
-      )
+        )
+        console.log('✅ 阿里云API调用完成')
+      } catch (error) {
+        console.error('❌ 阿里云流式API调用失败:', error)
+        throw error
+      }
+      
+      // 更新最后活跃时间
+      if (currentChat.value) {
+        currentChat.value.lastActive = new Date()
+      }
     } else {
       // DeepSeek模型（暂时保持模拟回复）
       const assistantResponse = `这是对"${messageText}"的模拟回复。在实际应用中，这里会调用DeepSeek API来获取真实回复。`
@@ -572,7 +588,7 @@ const sendMessage = async () => {
       }
     }
   } catch (error) {
-    console.error('发送消息失败:', error)
+    console.error('❌ 发送消息失败:', error)
     
     // 添加错误消息到聊天
     if (currentChat.value) {
@@ -589,8 +605,6 @@ const sendMessage = async () => {
     isLoading.value = false
     scrollToBottom()
   }
-
-  scrollToBottom()
 }
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -682,7 +696,8 @@ const login = async () => {
         isLoggedIn.value = true
       }
     } else {
-      notification.error(`登录失败: ${error?.message || '未知错误'}`)
+      const errorMessage = (error as Error)?.message || (error as Error)?.toString() || '未知错误'
+      notification.error(`登录失败: ${errorMessage}`)
     }
   } catch (error) {
     console.error('登录过程中出错:', error)
@@ -726,7 +741,8 @@ const register = async () => {
       // 自动切换到登录界面
       showLoginDialog.value = true
     } else {
-      notification.error(`注册失败: ${error?.message || '未知错误'}`)
+      const errorMessage = (error as Error)?.message || (error as Error)?.toString() || '未知错误'
+      notification.error(`注册失败: ${errorMessage}`)
     }
   } catch (error) {
     console.error('注册过程中出错:', error)
@@ -748,7 +764,8 @@ const logout = async () => {
       console.log('用户已退出登录')
       notification.success('已退出登录')
     } else {
-      notification.error(`登出失败: ${error?.message || '未知错误'}`)
+      const errorMessage = (error as Error)?.message || (error as Error)?.toString() || '未知错误'
+      notification.error(`登出失败: ${errorMessage}`)
     }
   } catch (error) {
     console.error('登出过程中出错:', error)
@@ -756,14 +773,14 @@ const logout = async () => {
   }
 }
 
-// 阿里云大模型配置
+// 阿里云大模型配置（DashScope SDK格式）
 const aliyunConfig = ref({
   apiKey: '',
-  apiUrl: '',
-  appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2',
+  appId: '',
   model: 'qwen-turbo',
   temperature: 0.7,
-  maxTokens: 2000
+  maxTokens: 2000,
+  agentId: ''
 })
 
 // 模型类型选择
@@ -789,14 +806,14 @@ const saveApiKey = () => {
     console.log('DeepSeek API Key已保存:', apiKey.value)
     notification.success('DeepSeek API Key 保存成功！')
   } else {
-    // 阿里云大模型配置
+    // 阿里云大模型配置（DashScope SDK格式）
     if (!aliyunConfig.value.apiKey.trim()) {
       notification.error('请输入有效的阿里云API Key')
       return
     }
     
-    if (!aliyunConfig.value.apiUrl.trim()) {
-      notification.error('请输入阿里云API URL')
+    if (!aliyunConfig.value.appId.trim()) {
+      notification.error('请输入应用ID')
       return
     }
     
@@ -813,14 +830,8 @@ const saveApiKey = () => {
   
   showApiKeyDialog.value = false
   apiKey.value = ''
-  aliyunConfig.value = {
-    apiKey: '',
-    apiUrl: '',
-    appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2',
-    model: 'qwen-turbo',
-    temperature: 0.7,
-    maxTokens: 2000
-  }
+  // 注意：这里不应该重置aliyunConfig，因为配置已经保存到localStorage
+  // 并且在onMounted中会重新加载，重置会导致用户输入丢失
 }
 
 // 生命周期
@@ -834,6 +845,17 @@ onMounted(() => {
   const savedApiKey = localStorage.getItem('deepseek-api-key')
   if (savedApiKey) {
     apiKey.value = savedApiKey
+  }
+  
+  // 加载已保存的阿里云配置
+  const savedAliyunConfig = localStorage.getItem('aliyun-config')
+  if (savedAliyunConfig) {
+    try {
+      aliyunConfig.value = JSON.parse(savedAliyunConfig)
+      console.log('阿里云配置已加载:', aliyunConfig.value)
+    } catch (error) {
+      console.error('解析阿里云配置失败:', error)
+    }
   }
   
   // 添加全局点击事件监听器，用于关闭用户菜单

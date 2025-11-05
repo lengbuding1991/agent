@@ -1,62 +1,29 @@
 import axios from 'axios'
 
-// 阿里云大模型配置接口
+// 阿里云百炼平台自定义应用配置接口
+// 基于测试文件 test-bailian-connection.py 的格式
 export interface AliyunConfig {
   apiKey: string
-  apiUrl: string
-  model: string
-  appId?: string // 应用ID，用于标识您的应用
+  appId: string // 应用ID，必填
   temperature?: number
   maxTokens?: number
 }
 
-// 阿里云大模型请求接口（兼容OpenAI格式）
+// 阿里云百炼平台自定义应用API请求接口
 export interface AliyunRequest {
-  model: string
-  messages: Array<{
-    role: 'user' | 'assistant' | 'system'
-    content: string
-  }>
-  temperature?: number
-  max_tokens?: number
-  stream?: boolean
-}
-
-// 阿里云流式请求接口（兼容OpenAI格式）
-export interface AliyunChatRequest {
-  model: string
-  messages: Array<{
-    role: 'user' | 'assistant' | 'system'
-    content: string
-  }>
-  temperature?: number
-  max_tokens?: number
-  stream?: boolean
-}
-
-// 阿里云大模型响应接口（兼容OpenAI格式）
-export interface AliyunChatResponse {
-  id: string
-  object: string
-  created: number
-  model: string
-  choices: Array<{
-    index: number
-    message: {
-      role: string
-      content: string
-    }
-    finish_reason: string
-  }>
-  usage?: {
-    prompt_tokens: number
-    completion_tokens: number
-    total_tokens: number
+  prompt: string
+  parameters?: {
+    temperature?: number
+    max_tokens?: number
+    top_p?: number
+    top_k?: number
+    seed?: number
+    stream?: boolean
   }
 }
 
-// 阿里云大模型响应接口（阿里云原生格式）
-export interface AliyunNativeResponse {
+// 阿里云百炼平台文本生成API响应接口
+export interface AliyunResponse {
   request_id: string
   output: {
     text: string
@@ -69,24 +36,9 @@ export interface AliyunNativeResponse {
   }
 }
 
-// 流式响应数据块（兼容OpenAI格式）
-export interface AliyunChatStreamChunk {
-  id: string
-  object: string
-  created: number
-  model: string
-  choices: Array<{
-    index: number
-    delta: {
-      role?: string
-      content?: string
-    }
-    finish_reason: string | null
-  }>
-}
-
-// 流式响应数据块（阿里云原生格式）
-export interface AliyunNativeStreamChunk {
+// 流式响应数据块（阿里云百炼平台文本生成API格式）
+export interface AliyunStreamChunk {
+  request_id: string
   output: {
     text: string
     finish_reason: string
@@ -99,16 +51,13 @@ export interface AliyunNativeStreamChunk {
 }
 
 // 阿里云大模型服务类
+// 基于测试文件 test-bailian-connection.py 的实现方式
 export class AliyunService {
   private config: AliyunConfig | null = null
 
   // 设置配置
-  setConfig(config: AliyunConfig) {
+  setConfig(config: AliyunConfig): void {
     this.config = config
-    console.log('阿里云大模型配置已设置:', {
-      apiUrl: config.apiUrl,
-      model: config.model
-    })
   }
 
   // 获取当前配置
@@ -116,240 +65,289 @@ export class AliyunService {
     return this.config
   }
 
-  // 验证配置是否有效
-  isValidConfig(): boolean {
-    return !!(this.config?.apiKey && this.config?.apiUrl && this.config?.model)
+  // 验证配置
+  validateConfig(): boolean {
+    if (!this.config) {
+      throw new Error('阿里云配置未设置')
+    }
+    if (!this.config.apiKey) {
+      throw new Error('API Key 不能为空')
+    }
+    if (!this.config.appId) {
+      throw new Error('应用ID不能为空')
+    }
+    return true
   }
 
-  // 发送聊天消息（非流式）
-  async sendChatMessage(messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>): Promise<string> {
-    if (!this.isValidConfig()) {
-      throw new Error('阿里云大模型配置不完整，请先设置API Key、API URL和模型名称')
+  // 构建DashScope API请求URL（百炼平台自定义应用端点）
+  // 使用阿里云百炼平台自定义应用API格式
+  private buildApiUrl(): string {
+    if (!this.config) {
+      throw new Error('配置未设置')
     }
+    
+    // 使用代理URL解决CORS问题
+    // 阿里云百炼平台自定义应用API的正确格式：/api/v1/apps/{appId}/invoke
+    // 经过Vite代理重写后，实际请求：https://dashscope.aliyuncs.com/api/v1/apps/{appId}/invoke
+    const baseUrl = `/api/aliyun/api/v1/apps/${this.config.appId}/invoke`
+    
+    return baseUrl
+  }
 
-    // 构建请求数据，兼容阿里云原生格式
-    const requestData: any = {
-      model: this.config!.model,
+  // 发送聊天消息（非流式）- 百炼平台自定义应用格式
+  // 使用阿里云百炼平台自定义应用API格式
+  async sendChatMessage(messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>): Promise<AliyunResponse> {
+    this.validateConfig()
+    
+    // 获取最后一条用户消息作为prompt
+    const userMessage = messages.filter(msg => msg.role === 'user').pop()
+    if (!userMessage) {
+      throw new Error('没有找到用户消息')
+    }
+    
+    // 构建请求数据，使用阿里云百炼平台自定义应用API格式
+    const requestData = {
       input: {
-        messages
+        prompt: userMessage.content
       },
       parameters: {
-        temperature: this.config?.temperature || 0.7,
-        max_tokens: this.config?.maxTokens || 2000,
-        stream: false
+        temperature: this.config!.temperature || 0.7,
+        max_tokens: this.config!.maxTokens || 2000
       }
     }
 
-    // 如果配置了应用ID，添加到请求参数中
-    if (this.config?.appId) {
-      requestData.parameters.app_id = this.config.appId
-    }
+    console.log('🔍 [aliyunService] 非流式调用开始')
+    console.log('📋 配置信息:', this.config)
+    console.log('💬 用户消息:', userMessage.content)
+    console.log('🚀 请求数据:', requestData)
+    console.log('🌐 API URL:', this.buildApiUrl())
 
     try {
-      const response = await axios.post(this.config!.apiUrl, requestData, {
+      console.log('📤 开始发送请求...')
+      const response = await axios.post(this.buildApiUrl(), requestData, {
         headers: {
           'Authorization': `Bearer ${this.config!.apiKey}`,
           'Content-Type': 'application/json'
-        },
-        timeout: 30000
+        }
       })
-
-      const data = response.data
       
-      // 处理阿里云原生格式响应
-      if (data.output && data.output.text) {
-        return data.output.text
-      }
-      // 处理兼容OpenAI格式响应
-      else if (data.choices && data.choices.length > 0 && data.choices[0].message) {
-        return data.choices[0].message.content
-      }
-      // 处理其他可能的响应格式
-      else if (data.choices && data.choices.length > 0 && data.choices[0].text) {
-        return data.choices[0].text
-      }
-      else {
-        console.warn('阿里云大模型返回了未知格式的响应:', data)
-        throw new Error('阿里云大模型返回了无法解析的回复格式')
-      }
+      console.log('✅ 请求成功，响应数据:', response.data)
+      return response.data
     } catch (error: any) {
-      console.error('阿里云大模型调用失败:', error)
+      console.error('❌ 请求失败:', error)
+      
+      // 处理网络错误和API错误
+      if (error.code === 'ERR_NETWORK' || error.message.includes('Failed to fetch')) {
+        throw new Error('网络连接失败，请检查网络连接或API端点配置')
+      }
       
       if (error.response) {
-        // 服务器返回错误状态码
-        const status = error.response.status
-        const message = error.response.data?.message || error.response.statusText
-        
-        switch (status) {
-          case 401:
-            throw new Error('API Key无效，请检查您的API Key配置')
-          case 403:
-            throw new Error('API Key权限不足或配额已用完')
-          case 429:
-            throw new Error('请求频率过高，请稍后重试')
-          case 500:
-            throw new Error('阿里云大模型服务内部错误，请稍后重试')
-          default:
-            throw new Error(`阿里云大模型请求失败 (${status}): ${message}`)
-        }
-      } else if (error.request) {
-        // 请求发送失败
-        throw new Error('无法连接到阿里云大模型服务，请检查网络连接和API URL')
-      } else {
-        // 其他错误
-        throw new Error(`阿里云大模型调用失败: ${error.message}`)
+        console.error('HTTP错误详情:', error.response.status, error.response.data)
+        throw new Error(`阿里云百炼平台API调用失败: ${error.response.status} - ${JSON.stringify(error.response.data)}`)
       }
+      
+      throw new Error(`阿里云百炼平台API调用失败: ${error.message}`)
     }
   }
 
-  // 流式消息发送方法
+  // 流式消息发送方法（百炼平台自定义应用格式）
+  // 使用阿里云百炼平台自定义应用API格式，启用流式响应
   async sendMessageStream(
-    message: string, 
-    onChunk: (chunk: string) => void,
-    onComplete: (fullResponse: string) => void,
-    onError: (error: Error) => void
+    messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>, 
+    onChunk: (chunk: string) => void
   ): Promise<void> {
-    if (!this.config?.apiKey || !this.config?.apiUrl || !this.config?.model) {
-      throw new Error('阿里云大模型配置不完整，请先设置API Key、API URL和模型名称')
-    }
+    console.log('🔍 [aliyunService] 流式调用开始')
+    console.log('📋 配置信息:', this.config)
+    
+    this.validateConfig()
 
-    // 构建请求数据，兼容阿里云原生格式
-    const requestData: any = {
-      model: this.config.model,
+    // 获取最后一条用户消息
+    const userMessage = messages.filter(msg => msg.role === 'user').pop()
+    if (!userMessage) {
+      throw new Error('没有找到用户消息')
+    }
+    
+    // 构建请求数据，使用阿里云百炼平台自定义应用API格式，启用流式
+    const requestData = {
       input: {
-        messages: [
-          {
-            role: 'user',
-            content: message
-          }
-        ]
+        prompt: userMessage.content
       },
       parameters: {
-        temperature: this.config?.temperature || 0.7,
-        max_tokens: this.config?.maxTokens || 2000,
+        temperature: this.config!.temperature || 0.7,
+        max_tokens: this.config!.maxTokens || 2000,
         stream: true
       }
     }
 
-    // 如果配置了应用ID，添加到请求参数中
-    if (this.config?.appId) {
-      requestData.parameters.app_id = this.config.appId
-    }
+    console.log('💬 用户消息:', userMessage.content)
+    console.log('🚀 请求数据:', requestData)
+    console.log('🌐 API URL:', this.buildApiUrl())
 
     try {
-      const response = await fetch(this.config.apiUrl, {
+      console.log('📤 开始发送流式请求...')
+      const response = await fetch(this.buildApiUrl(), {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${this.config!.apiKey}`,
+          'Content-Type': 'application/json',
+          'X-DashScope-SSE': 'enable'
         },
         body: JSON.stringify(requestData)
       })
 
+      console.log('📥 响应状态:', response.status, response.statusText)
+      console.log('📋 响应头:', Object.fromEntries(response.headers.entries()))
+
       if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(`阿里云API请求失败: ${response.status} ${response.statusText} - ${errorText}`)
+        console.error('❌ HTTP错误:', response.status, errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
+
+      console.log('✅ HTTP请求成功，开始处理流式响应...')
 
       const reader = response.body?.getReader()
       if (!reader) {
         throw new Error('无法读取响应流')
       }
 
-      let fullResponse = ''
       const decoder = new TextDecoder()
 
       try {
+        let buffer = ''
+        let hasReceivedResult = false
+        
         while (true) {
           const { done, value } = await reader.read()
           
           if (done) {
+            console.log('🔚 流式响应结束')
+            if (!hasReceivedResult) {
+              console.warn('⚠️ 未收到任何有效结果数据')
+            }
             break
           }
 
           const chunk = decoder.decode(value, { stream: true })
-          const lines = chunk.split('\n')
+          buffer += chunk
+          
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || '' // 保留未完成的行
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const dataStr = line.slice(6)
+            const trimmedLine = line.trim()
+            if (!trimmedLine) continue
+            
+            console.log('📥 原始SSE行:', trimmedLine, '长度:', trimmedLine.length)
+            
+            // 处理阿里云百炼平台自定义应用的SSE格式
+            // 检查多种可能的data行格式
+            if (trimmedLine.startsWith('data:') || trimmedLine.startsWith('data: ')) {
+              console.log('✅ 检测到data行，开始处理...')
+              // 正确提取JSON数据：去掉"data: "前缀，并处理可能的引号问题
+              const dataStr = trimmedLine.replace(/^data:\s*"?/, '').replace(/"?$/, '')
+              console.log('🔍 准备解析SSE数据:', dataStr)
               
-              if (dataStr === '[DONE]') {
-                onComplete(fullResponse)
-                return
-              }
-
               try {
                 const data = JSON.parse(dataStr)
+                console.log('✅ JSON解析成功:', data)
                 
-                // 处理阿里云原生格式流式响应
+                // 处理百炼平台自定义应用响应格式
                 if (data.output && data.output.text) {
                   const content = data.output.text
                   if (content) {
-                    fullResponse += content
+                    console.log('✅ 收到有效内容:', content)
+                    
+                    // 阿里云百炼平台返回的是完整响应，不是分块数据
+                    // 这里需要一次性传递完整内容，而不是分块追加
+                    console.log('📤 准备调用onChunk回调...')
                     onChunk(content)
-                  }
-                }
-                // 处理兼容OpenAI格式流式响应
-                else if (data.choices && data.choices.length > 0 && data.choices[0].delta) {
-                  const content = data.choices[0].delta.content
-                  if (content) {
-                    fullResponse += content
-                    onChunk(content)
-                  }
-                }
-                // 处理其他可能的流式响应格式
-                else if (data.choices && data.choices.length > 0 && data.choices[0].text) {
-                  const content = data.choices[0].text
-                  if (content) {
-                    fullResponse += content
-                    onChunk(content)
+                    console.log('✅ onChunk回调已调用')
+                    hasReceivedResult = true
+                    
+                    // 由于是完整响应，收到后可以直接结束流式处理
+                    console.log('✅ 完整响应已接收，流式处理完成')
+                    
+                    // 确保回调函数执行完毕后再结束
+                    await new Promise(resolve => setTimeout(resolve, 0))
+                    break // 跳出循环，结束流式处理
                   }
                 }
               } catch (parseError) {
-                // 忽略解析错误，继续处理下一个数据块
-                console.warn('解析流数据失败:', parseError, '原始数据:', dataStr)
+                console.warn('❌ 解析流数据失败:', parseError, '原始数据:', dataStr)
               }
+            }
+            
+            // 处理阿里云百炼平台的特殊SSE格式（包含HTTP状态的行）
+            if (trimmedLine.startsWith(':HTTP_STATUS/')) {
+              console.log('📋 阿里云HTTP状态行:', trimmedLine)
+              // 这个行后面紧跟着data行，我们继续处理下一行
+              continue
+            }
+            
+            // 处理事件类型
+            if (trimmedLine.startsWith('event: ')) {
+              const eventType = trimmedLine.slice(7)
+              console.log('📋 事件类型:', eventType)
+            }
+            
+            // 处理完成信号
+            if (trimmedLine === 'data: [DONE]' || trimmedLine.includes('finish_reason')) {
+              console.log('✅ 流式响应完成')
+              return
             }
           }
         }
       } finally {
         reader.releaseLock()
       }
-
-      onComplete(fullResponse)
     } catch (error) {
-      console.error('阿里云流式API调用失败:', error)
-      onError(error instanceof Error ? error : new Error('未知错误'))
+      console.error('阿里云百炼平台流式API调用失败:', error)
+      throw error
     }
   }
 
-  // 发送聊天消息（流式响应）
+  // 发送聊天消息（流式响应）- 备用方法
   async *sendChatMessageStream(messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>): AsyncGenerator<string, void, unknown> {
-    if (!this.isValidConfig()) {
-      throw new Error('阿里云大模型配置不完整，请先设置API Key、API URL和模型名称')
+    this.validateConfig()
+
+    // 获取最后一条用户消息
+    const userMessage = messages.filter(msg => msg.role === 'user').pop()
+    if (!userMessage) {
+      throw new Error('没有找到用户消息')
+    }
+    
+    const requestData = {
+      input: {
+        prompt: userMessage.content
+      },
+      parameters: {
+        temperature: this.config!.temperature || 0.7,
+        max_tokens: this.config!.maxTokens || 2000,
+        stream: true
+      }
     }
 
-    const requestData: AliyunChatRequest = {
-      model: this.config!.model,
-      messages,
-      temperature: this.config?.temperature || 0.7,
-      max_tokens: this.config?.maxTokens || 2000,
-      stream: true
-    }
+    console.log('🔍 [aliyunService] 备用流式调用开始')
+    console.log('💬 用户消息:', userMessage.content)
+    console.log('🌐 API URL:', this.buildApiUrl())
 
     try {
-      const response = await fetch(this.config!.apiUrl, {
+      const response = await fetch(this.buildApiUrl(), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.config!.apiKey}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-DashScope-SSE': 'enable'
         },
         body: JSON.stringify(requestData)
       })
 
+      console.log('📥 响应状态:', response.status, response.statusText)
+
       if (!response.ok) {
         const errorText = await response.text()
+        console.error('❌ HTTP错误:', response.status, errorText)
         throw new Error(`HTTP ${response.status}: ${errorText}`)
       }
 
@@ -361,57 +359,95 @@ export class AliyunService {
       const decoder = new TextDecoder()
       let buffer = ''
 
-      while (true) {
-        const { done, value } = await reader.read()
+      try {
+        let hasReceivedResult = false
         
-        if (done) break
-        
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          const trimmedLine = line.trim()
-          if (!trimmedLine || trimmedLine === 'data: [DONE]') continue
+        while (true) {
+          const { done, value } = await reader.read()
           
-          if (trimmedLine.startsWith('data: ')) {
-            try {
-              const jsonData = trimmedLine.slice(6)
-              const chunk: AliyunChatStreamChunk = JSON.parse(jsonData)
-              
-              if (chunk.choices && chunk.choices.length > 0) {
-                const content = chunk.choices[0].delta.content
-                if (content) {
-                  yield content
+          if (done) {
+            if (!hasReceivedResult) {
+              console.warn('⚠️ 备用方法未收到任何有效结果数据')
+            }
+            break
+          }
+          
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            const trimmedLine = line.trim()
+            if (!trimmedLine) continue
+            
+            console.log('📥 备用方法原始SSE行:', trimmedLine)
+            
+            // 处理阿里云百炼平台自定义应用的SSE格式
+            if (trimmedLine.startsWith('data: ')) {
+              try {
+                const jsonData = trimmedLine.slice(6)
+                const data = JSON.parse(jsonData)
+                
+                // 处理百炼平台自定义应用响应格式
+                if (data.output && data.output.text) {
+                  const content = data.output.text
+                  if (content) {
+                    console.log('✅ 备用方法收到有效内容:', content)
+                    
+                    // 阿里云百炼平台返回的是完整响应，不是分块数据
+                    // 这里需要一次性传递完整内容
+                    yield content
+                    hasReceivedResult = true
+                    
+                    // 由于是完整响应，收到后可以直接结束流式处理
+                    console.log('✅ 备用方法完整响应已接收，流式处理完成')
+                    return // 对于生成器函数，使用return来结束
+                  }
                 }
+              } catch (error) {
+                console.warn('解析流式响应数据失败:', error)
               }
-            } catch (error) {
-              console.warn('解析流式响应数据失败:', error)
+            }
+            
+            // 处理阿里云百炼平台的特殊SSE格式（包含HTTP状态的行）
+            if (trimmedLine.startsWith(':HTTP_STATUS/')) {
+              console.log('📋 备用方法阿里云HTTP状态行:', trimmedLine)
+              // 这个行后面紧跟着data行，我们继续处理下一行
+              continue
+            }
+            
+            // 处理完成信号
+            if (trimmedLine === 'data: [DONE]' || trimmedLine.includes('finish_reason')) {
+              console.log('✅ 备用流式响应完成')
+              return
             }
           }
         }
+      } finally {
+        reader.releaseLock()
       }
     } catch (error: any) {
-      console.error('阿里云大模型流式调用失败:', error)
+      console.error('阿里云百炼平台流式调用失败:', error)
       throw new Error(`流式响应失败: ${error.message}`)
     }
   }
 
-  // 测试连接
+  // 测试连接 - 使用与测试文件相同的逻辑
   async testConnection(): Promise<boolean> {
-    if (!this.isValidConfig()) {
-      return false
-    }
-
     try {
+      console.log('🔍 开始测试阿里云百炼平台连接...')
+      
       const testMessages = [
-        { role: 'user' as const, content: '你好，请回复"连接成功"' }
+        { role: 'user' as const, content: '你好' }
       ]
       
+      // 使用非流式调用进行测试
       const response = await this.sendChatMessage(testMessages)
-      return response.includes('连接成功')
+      
+      console.log('✅ 连接测试成功:', response)
+      return !!response.output && !!response.output.text
     } catch (error) {
-      console.error('阿里云大模型连接测试失败:', error)
+      console.error('❌ 连接测试失败:', error)
       return false
     }
   }

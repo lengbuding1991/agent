@@ -1,13 +1,12 @@
 // 阿里云大模型连接测试脚本
 import axios from 'axios';
 
-// 您提供的配置信息
+// 阿里云百炼平台自定义应用配置
 const config = {
-  apiKey: 'sk-7511ca603ff44019b2395b3d94630ffe',
-  // 尝试不同的URL格式
+  apiKey: 'sk-7511ca603ff44019b2395b3d94630ffe', // 您的API Key
+  appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2', // 您的应用ID
   apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
   model: 'qwen-turbo',
-  appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2',
   temperature: 0.7,
   maxTokens: 2000
 };
@@ -23,16 +22,15 @@ async function testAliyunConnection() {
     console.log('- 模型:', config.model);
     console.log('');
 
-    // 构建请求数据（尝试多种格式）
+    // 构建请求数据 - 兼容模式API格式
     const requestData = {
-      // 格式1：简单消息格式
+      model: config.model,
       messages: [
         {
           role: 'user',
           content: '你好，请简单介绍一下你自己。'
         }
       ],
-      model: config.model,
       temperature: config.temperature,
       max_tokens: config.maxTokens
     };
@@ -126,8 +124,7 @@ async function main() {
 }
 
 // 执行主函数
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
-}
+console.log('开始执行阿里云连接测试...');
+main();
 
 export { testAliyunConnection, config };
