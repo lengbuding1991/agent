@@ -86,12 +86,14 @@ export class AliyunService {
       throw new Error('配置未设置')
     }
     
-    // 使用代理URL解决CORS问题
-    // 阿里云百炼平台自定义应用API的正确格式：/api/v1/apps/{appId}/invoke
-    // 经过Vite代理重写后，实际请求：https://dashscope.aliyuncs.com/api/v1/apps/{appId}/invoke
-    const baseUrl = `/api/aliyun/api/v1/apps/${this.config.appId}/invoke`
-    
-    return baseUrl
+    // 根据环境选择URL：开发环境使用代理，生产环境使用直接URL
+    if (import.meta.env.DEV) {
+      // 开发环境：使用代理URL解决CORS问题
+      return `/api/aliyun/api/v1/apps/${this.config.appId}/invoke`
+    } else {
+      // 生产环境：直接使用阿里云API URL
+      return `https://dashscope.aliyuncs.com/api/v1/apps/${this.config.appId}/invoke`
+    }
   }
 
   // 发送聊天消息（非流式）- 百炼平台自定义应用格式
