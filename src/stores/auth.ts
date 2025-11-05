@@ -1,59 +1,95 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { UserInfo } from '../services/api'
+import { supabaseAuthService } from '../services/supabaseAuth'
+import type { UserProfile } from '../services/supabase.types'
 
 export const useAuthStore = defineStore('auth', () => {
   // 状态
-  const token = ref<string | null>(localStorage.getItem('auth_token'))
-  const user = ref<UserInfo | null>(null)
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+  const user = ref<UserProfile | null>(null)
+  const isLoading = ref(false)
+  const isAuthenticated = computed(() => !!user.value)
 
-  // 从localStorage初始化token
-  const initializeFromStorage = () => {
-    const storedToken = localStorage.getItem('auth_token')
-    if (storedToken) {
-      token.value = storedToken
+  // 初始化认证状态
+  const initializeAuth = async () => {
+    isLoading.value = true
+    try {
+      const { user: currentUser, error } = await supabaseAuthService.getCurrentUser()
+      if (error) throw error
+      user.value = currentUser
+    } catch (error) {
+      console.error('初始化认证失败:', error)
+      user.value = null
+    } finally {
+      isLoading.value = false
     }
   }
 
-  // 设置token
-  const setToken = (newToken: string) => {
-    token.value = newToken
-    localStorage.setItem('auth_token', newToken)
+  // 用户注册
+  const signUp = async (email: string, password: string, username: string) => {
+    isLoading.value = true
+    try {
+      const { user: newUser, error } = await supabaseAuthService.signUp(email, password, username)
+      if (error) throw error
+      user.value = newUser
+      return { success: true }
+    } catch (error) {
+      console.error('注册失败:', error)
+      return { success: false, error }
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  // 设置用户信息
-  const setUser = (userInfo: UserInfo) => {
-    user.value = userInfo
+  // 用户登录
+  const signIn = async (email: string, password: string) => {
+    isLoading.value = true
+    try {
+      const { user: authUser, error } = await supabaseAuthService.signIn(email, password)
+      if (error) throw error
+      user.value = authUser
+      return { success: true }
+    } catch (error) {
+      console.error('登录失败:', error)
+      return { success: false, error }
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  // 清除认证信息
-  const clearAuth = () => {
-    token.value = null
-    user.value = null
-    localStorage.removeItem('auth_token')
+  // 用户登出
+  const signOut = async () => {
+    isLoading.value = true
+    try {
+      const { error } = await supabaseAuthService.signOut()
+      if (error) throw error
+      user.value = null
+      return { success: true }
+    } catch (error) {
+      console.error('登出失败:', error)
+      return { success: false, error }
+    } finally {
+      isLoading.value = false
+    }
   }
 
-  // 检查token是否有效（简单实现）
-  const isTokenValid = computed(() => {
-    if (!token.value) return false
-    
-    // 在实际应用中，这里应该解析JWT token并检查过期时间
-    // 这里简单检查token是否存在
-    return true
-  })
+  // 监听认证状态变化
+  const setupAuthListener = () => {
+    supabaseAuthService.onAuthStateChange((authUser) => {
+      user.value = authUser
+    })
+  }
 
   return {
     // 状态
-    token,
     user,
+    isLoading,
     isAuthenticated,
-    isTokenValid,
     
     // 方法
-    initializeFromStorage,
-    setToken,
-    setUser,
-    clearAuth
+    initializeAuth,
+    signUp,
+    signIn,
+    signOut,
+    setupAuthListener
   }
 })

@@ -100,8 +100,11 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn-secondary" @click="showLoginDialog = false">取消</button>
-            <button class="btn-primary" @click="login">登录</button>
+            <button class="btn-secondary" @click="showLoginDialog = false" :disabled="loginLoading">取消</button>
+            <button class="btn-primary" @click="login" :disabled="loginLoading">
+              <span v-if="loginLoading" class="loading-spinner"></span>
+              {{ loginLoading ? '登录中...' : '登录' }}
+            </button>
           </div>
         </div>
       </div>
@@ -159,8 +162,11 @@
             </div>
           </div>
           <div class="modal-footer">
-            <button class="btn-secondary" @click="showRegisterDialog = false">取消</button>
-            <button class="btn-primary" @click="register">注册</button>
+            <button class="btn-secondary" @click="showRegisterDialog = false" :disabled="registerLoading">取消</button>
+            <button class="btn-primary" @click="register" :disabled="registerLoading">
+              <span v-if="registerLoading" class="loading-spinner"></span>
+              {{ registerLoading ? '注册中...' : '注册' }}
+            </button>
           </div>
         </div>
       </div>
@@ -169,28 +175,127 @@
       <div v-if="showApiKeyDialog" class="modal-overlay" @click="showApiKeyDialog = false">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
-            <h3>设置 API Key</h3>
+            <h3>设置 AI 模型配置</h3>
             <button class="close-btn" @click="showApiKeyDialog = false">×</button>
           </div>
           <div class="modal-body">
+            <!-- 模型类型选择 -->
             <div class="input-group">
-              <label for="apiKey">DeepSeek API Key:</label>
-              <input
-                id="apiKey"
-                type="password"
-                v-model="apiKey"
-                placeholder="请输入您的 API Key"
-                class="api-key-input"
-              />
+              <label>选择 AI 模型:</label>
+              <div class="radio-group">
+                <label class="radio-label">
+                  <input type="radio" v-model="modelType" value="deepseek" />
+                  <span class="radio-text">DeepSeek 模型</span>
+                </label>
+                <label class="radio-label">
+                  <input type="radio" v-model="modelType" value="aliyun" />
+                  <span class="radio-text">阿里云大模型</span>
+                </label>
+              </div>
             </div>
-            <div class="hint-text">
-              <p>🔒 您的 API Key 将安全存储在本地浏览器中</p>
-              <p>🌐 获取 API Key: <a href="https://platform.deepseek.com/api_keys" target="_blank" class="link">DeepSeek 控制台</a></p>
+
+            <!-- DeepSeek 配置 -->
+            <div v-if="modelType === 'deepseek'" class="model-config">
+              <div class="input-group">
+                <label for="apiKey">DeepSeek API Key:</label>
+                <input
+                  id="apiKey"
+                  type="password"
+                  v-model="apiKey"
+                  placeholder="请输入您的 DeepSeek API Key"
+                  class="api-key-input"
+                />
+              </div>
+              <div class="hint-text">
+                <p>🔒 您的 API Key 将安全存储在本地浏览器中</p>
+                <p>🌐 获取 API Key: <a href="https://platform.deepseek.com/api_keys" target="_blank" class="link">DeepSeek 控制台</a></p>
+              </div>
+            </div>
+
+            <!-- 阿里云大模型配置 -->
+            <div v-if="modelType === 'aliyun'" class="model-config">
+              <div class="input-group">
+                <label for="aliyunApiKey">阿里云 API Key:</label>
+                <input
+                  id="aliyunApiKey"
+                  type="password"
+                  v-model="aliyunConfig.apiKey"
+                  placeholder="请输入您的阿里云 API Key"
+                  class="api-key-input"
+                />
+              </div>
+              <div class="input-group">
+                <label for="aliyunApiUrl">API URL:</label>
+                <input
+                  id="aliyunApiUrl"
+                  type="text"
+                  v-model="aliyunConfig.apiUrl"
+                  placeholder="请输入阿里云 API 地址，例如：https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+                  class="api-key-input"
+                />
+                <div class="hint-text small">
+                  <p>💡 阿里云百炼OpenAI兼容API地址：https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions</p>
+                  <p>📝 已验证可用的API地址，支持通义千问等模型</p>
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="aliyunModel">模型名称:</label>
+                <input
+                  id="aliyunModel"
+                  type="text"
+                  v-model="aliyunConfig.model"
+                  placeholder="请输入模型名称，例如：qwen-turbo"
+                  class="api-key-input"
+                />
+              </div>
+              <div class="input-group">
+                <label for="aliyunAppId">应用ID (可选):</label>
+                <input
+                  id="aliyunAppId"
+                  type="text"
+                  v-model="aliyunConfig.appId"
+                  placeholder="请输入您的应用ID，例如：c3e3bac8de9e47e2bc26cb30b6b459e2"
+                  class="api-key-input"
+                />
+                <div class="hint-text small">
+                  <p>💡 应用ID用于标识您的应用，在阿里云百炼控制台中获取</p>
+                  <p>📝 如果不确定，可以留空</p>
+                </div>
+              </div>
+              <div class="input-row">
+                <div class="input-group half-width">
+                  <label for="temperature">温度 (0-1):</label>
+                  <input
+                    id="temperature"
+                    type="number"
+                    v-model.number="aliyunConfig.temperature"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    class="api-key-input"
+                  />
+                </div>
+                <div class="input-group half-width">
+                  <label for="maxTokens">最大令牌数:</label>
+                  <input
+                    id="maxTokens"
+                    type="number"
+                    v-model.number="aliyunConfig.maxTokens"
+                    min="1"
+                    max="4000"
+                    class="api-key-input"
+                  />
+                </div>
+              </div>
+              <div class="hint-text">
+                <p>🔒 您的配置将安全存储在本地浏览器中</p>
+                <p>🌐 获取阿里云 API Key: <a href="https://dashscope.aliyun.com/" target="_blank" class="link">阿里云百炼控制台</a></p>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button class="btn-secondary" @click="showApiKeyDialog = false">取消</button>
-            <button class="btn-primary" @click="saveApiKey">保存</button>
+            <button class="btn-primary" @click="saveApiKey">保存配置</button>
           </div>
         </div>
       </div>
@@ -259,6 +364,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useAuthStore } from '../stores/auth'
+import { aliyunService } from '../services/aliyunService'
+import notification from '../composables/useNotification'
+
+// 初始化authStore
+const authStore = useAuthStore()
 
 interface Message {
   id: string
@@ -283,6 +394,10 @@ const messageInput = ref<HTMLTextAreaElement>()
 const showApiKeyDialog = ref(false)
 const apiKey = ref('')
 const showUserMenu = ref(false)
+
+// 登录注册加载状态
+const loginLoading = ref(false)
+const registerLoading = ref(false)
 
 // 用户数据
 interface User {
@@ -392,21 +507,88 @@ const sendMessage = async () => {
   inputMessage.value = ''
   isLoading.value = true
 
-  // 模拟AI回复
-  setTimeout(() => {
-    if (currentChat.value) {
+  try {
+    if (modelType.value === 'aliyun') {
+      // 调用阿里云大模型（流式响应）
+      if (!aliyunConfig.value.apiKey || !aliyunConfig.value.apiUrl) {
+        throw new Error('请先配置阿里云大模型的API Key和API URL')
+      }
+      
+      // 配置阿里云服务
+      aliyunService.setConfig(aliyunConfig.value)
+      
+      // 创建流式响应消息
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `这是对"${messageText}"的模拟回复。在实际应用中，这里会调用AI API来获取真实回复。`,
+        content: '',
         timestamp: new Date()
       }
-      currentChat.value.messages.push(assistantMessage)
+      
+      if (currentChat.value) {
+        currentChat.value.messages.push(assistantMessage)
+      }
+      
+      // 使用流式响应
+      await aliyunService.sendMessageStream(
+        messageText,
+        // onChunk回调：处理每个数据块
+        (chunk: string) => {
+          if (currentChat.value && assistantMessage) {
+            assistantMessage.content += chunk
+            // 实时更新显示
+            scrollToBottom()
+          }
+        },
+        // onComplete回调：处理完成
+        (fullResponse: string) => {
+          console.log('流式响应完成:', fullResponse)
+          if (currentChat.value) {
+            currentChat.value.lastActive = new Date()
+          }
+        },
+        // onError回调：处理错误
+        (error: Error) => {
+          console.error('流式响应错误:', error)
+          if (currentChat.value && assistantMessage) {
+            assistantMessage.content = `抱歉，AI回复时出现错误：${error.message}`
+          }
+        }
+      )
+    } else {
+      // DeepSeek模型（暂时保持模拟回复）
+      const assistantResponse = `这是对"${messageText}"的模拟回复。在实际应用中，这里会调用DeepSeek API来获取真实回复。`
+      
+      // 添加AI回复到聊天
+      if (currentChat.value) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: assistantResponse,
+          timestamp: new Date()
+        }
+        currentChat.value.messages.push(assistantMessage)
+        currentChat.value.lastActive = new Date()
+      }
+    }
+  } catch (error) {
+    console.error('发送消息失败:', error)
+    
+    // 添加错误消息到聊天
+    if (currentChat.value) {
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `抱歉，发送消息时出现错误：${error instanceof Error ? error.message : '未知错误'}`,
+        timestamp: new Date()
+      }
+      currentChat.value.messages.push(errorMessage)
       currentChat.value.lastActive = new Date()
     }
+  } finally {
     isLoading.value = false
     scrollToBottom()
-  }, 1000)
+  }
 
   scrollToBottom()
 }
@@ -470,91 +652,175 @@ const switchToLogin = () => {
   showLoginDialog.value = true
 }
 
-const login = () => {
+const login = async () => {
   if (!loginForm.value.email || !loginForm.value.password) {
-    alert('请输入邮箱和密码')
+    notification.error('请输入邮箱和密码')
     return
   }
   
-  // 模拟登录验证
-  const user = mockUsers.find(u => u.email === loginForm.value.email)
-  if (user) {
-    currentUser.value = { ...user, status: '在线' }
-    isLoggedIn.value = true
-    showLoginDialog.value = false
-    loginForm.value = { email: '', password: '' }
-    console.log('登录成功:', user.name)
-  } else {
-    alert('邮箱或密码错误，请重试')
+  loginLoading.value = true
+  
+  try {
+    // 使用Supabase进行真实登录
+    const { success, error } = await authStore.signIn(loginForm.value.email, loginForm.value.password)
+    
+    if (success) {
+      notification.success('登录成功！')
+      showLoginDialog.value = false
+      loginForm.value = { email: '', password: '' }
+      
+      // 更新当前用户信息
+      if (authStore.user) {
+        currentUser.value = {
+          id: authStore.user.id,
+          name: authStore.user.username,
+          avatar: '👤',
+          status: '在线',
+          isLoggedIn: true,
+          email: authStore.user.email
+        }
+        isLoggedIn.value = true
+      }
+    } else {
+      notification.error(`登录失败: ${error?.message || '未知错误'}`)
+    }
+  } catch (error) {
+    console.error('登录过程中出错:', error)
+    notification.error('登录失败，请稍后重试')
+  } finally {
+    loginLoading.value = false
   }
 }
 
-const register = () => {
+const register = async () => {
   if (!registerForm.value.name || !registerForm.value.email || !registerForm.value.password) {
-    alert('请填写所有必填字段')
+    notification.error('请填写所有必填字段')
     return
   }
   
   if (registerForm.value.password.length < 6) {
-    alert('密码长度至少6位')
+    notification.error('密码长度至少6位')
     return
   }
   
   if (registerForm.value.password !== registerForm.value.confirmPassword) {
-    alert('两次输入的密码不一致')
+    notification.error('两次输入的密码不一致')
     return
   }
   
-  // 检查邮箱是否已存在
-  if (mockUsers.some(u => u.email === registerForm.value.email)) {
-    alert('该邮箱已被注册')
-    return
-  }
+  registerLoading.value = true
   
-  // 模拟注册成功
-  const newUser = {
-    id: `user${mockUsers.length + 1}`,
-    name: registerForm.value.name,
-    avatar: '👤',
-    status: '在线',
-    isLoggedIn: true,
-    email: registerForm.value.email
+  try {
+    // 使用Supabase进行真实注册
+    const { success, error } = await authStore.signUp(
+      registerForm.value.email,
+      registerForm.value.password,
+      registerForm.value.name
+    )
+    
+    if (success) {
+      notification.success('注册成功！请检查您的邮箱进行验证')
+      showRegisterDialog.value = false
+      registerForm.value = { name: '', email: '', password: '', confirmPassword: '' }
+      
+      // 自动切换到登录界面
+      showLoginDialog.value = true
+    } else {
+      notification.error(`注册失败: ${error?.message || '未知错误'}`)
+    }
+  } catch (error) {
+    console.error('注册过程中出错:', error)
+    notification.error('注册失败，请稍后重试')
+  } finally {
+    registerLoading.value = false
   }
-  
-  mockUsers.push(newUser)
-  currentUser.value = newUser
-  isLoggedIn.value = true
-  showRegisterDialog.value = false
-  registerForm.value = { name: '', email: '', password: '', confirmPassword: '' }
-  console.log('注册成功:', newUser.name)
 }
 
-const logout = () => {
-  currentUser.value = guestUser
-  isLoggedIn.value = false
-  showUserMenu.value = false
-  console.log('用户已退出登录')
-  alert('已退出登录')
+const logout = async () => {
+  try {
+    // 使用Supabase进行真实登出
+    const { success, error } = await authStore.signOut()
+    
+    if (success) {
+      currentUser.value = guestUser
+      isLoggedIn.value = false
+      showUserMenu.value = false
+      console.log('用户已退出登录')
+      notification.success('已退出登录')
+    } else {
+      notification.error(`登出失败: ${error?.message || '未知错误'}`)
+    }
+  } catch (error) {
+    console.error('登出过程中出错:', error)
+    notification.error('登出失败，请稍后重试')
+  }
 }
+
+// 阿里云大模型配置
+const aliyunConfig = ref({
+  apiKey: '',
+  apiUrl: '',
+  appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2',
+  model: 'qwen-turbo',
+  temperature: 0.7,
+  maxTokens: 2000
+})
+
+// 模型类型选择
+const modelType = ref('deepseek') // 'deepseek' 或 'aliyun'
 
 // API Key 相关方法
 const saveApiKey = () => {
   if (!isLoggedIn.value) {
-    alert('请先登录后再设置 API Key')
+    notification.error('请先登录后再设置 API Key')
     showApiKeyDialog.value = false
     showLoginDialog.value = true
     return
   }
   
-  if (!apiKey.value.trim()) {
-    alert('请输入有效的API Key')
-    return
+  if (modelType.value === 'deepseek') {
+    if (!apiKey.value.trim()) {
+      notification.error('请输入有效的DeepSeek API Key')
+      return
+    }
+    
+    // 保存DeepSeek API Key
+    localStorage.setItem('deepseek-api-key', apiKey.value)
+    console.log('DeepSeek API Key已保存:', apiKey.value)
+    notification.success('DeepSeek API Key 保存成功！')
+  } else {
+    // 阿里云大模型配置
+    if (!aliyunConfig.value.apiKey.trim()) {
+      notification.error('请输入有效的阿里云API Key')
+      return
+    }
+    
+    if (!aliyunConfig.value.apiUrl.trim()) {
+      notification.error('请输入阿里云API URL')
+      return
+    }
+    
+    if (!aliyunConfig.value.model.trim()) {
+      notification.error('请输入模型名称')
+      return
+    }
+    
+    // 保存阿里云配置
+    localStorage.setItem('aliyun-config', JSON.stringify(aliyunConfig.value))
+    console.log('阿里云配置已保存:', aliyunConfig.value)
+    notification.success('阿里云大模型配置保存成功！')
   }
   
-  // 保存API Key的逻辑
-  console.log('API Key已保存:', apiKey.value)
   showApiKeyDialog.value = false
   apiKey.value = ''
+  aliyunConfig.value = {
+    apiKey: '',
+    apiUrl: '',
+    appId: 'c3e3bac8de9e47e2bc26cb30b6b459e2',
+    model: 'qwen-turbo',
+    temperature: 0.7,
+    maxTokens: 2000
+  }
 }
 
 // 生命周期
@@ -898,9 +1164,59 @@ onMounted(() => {
 }
 
 .hint-text {
-  font-size: 12px;
-  color: #666;
-}
+    font-size: 12px;
+    color: #666;
+  }
+
+  .hint-text p {
+    margin: 0.25rem 0;
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .radio-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+  }
+
+  .radio-label:hover {
+    border-color: #007bff;
+  }
+
+  .radio-label input[type="radio"] {
+    margin: 0;
+  }
+
+  .radio-text {
+    font-weight: 500;
+  }
+
+  .model-config {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 0.375rem;
+    background-color: #f9f9f9;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 1rem;
+  }
+
+  .half-width {
+    flex: 1;
+  }
 
 /* 弹窗样式 */
 .modal-overlay {
@@ -1239,6 +1555,23 @@ onMounted(() => {
 .hint-text {
   font-size: 12px;
   color: #666;
+}
+
+/* 加载动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* 响应式设计 */
